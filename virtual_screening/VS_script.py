@@ -50,6 +50,7 @@ def CalculateFP(mol_list, fptype):
 
 def RankDatabase(act_list, dec_list, index_set, set_nb, fptype, topn, nb_ka):
 		ranking = []
+		print("start")
 		for idx in range(len(act_list)):
 			if idx not in index_set:
 				dbfp = act_list[idx].GetData(str(fptype))
@@ -57,6 +58,7 @@ def RankDatabase(act_list, dec_list, index_set, set_nb, fptype, topn, nb_ka):
 				KA = 1
 				simval = GetSimValAgainstAC(dbfp, act_list, index_set, fptype)
 				ranking = UpdateRanking(set_nb, mol_id, idx, simval, KA, ranking, topn)
+		print("start decoys")
 		for idx in range(len(dec_list)):
 			dbfp = dec_list[idx].GetData(str(fptype))
 			mol_id = dec_list[idx].GetTitle()
@@ -64,7 +66,9 @@ def RankDatabase(act_list, dec_list, index_set, set_nb, fptype, topn, nb_ka):
 			simval = GetSimValAgainstAC(dbfp, act_list, index_set, fptype)
 			ranking = UpdateRanking(set_nb, mol_id, idx, simval, KA, ranking, topn)
 
+		print("start analysis")
 		data = RankingAnalysis(ranking, nb_ka)
+		print ("end")
 		return ranking, data
 
 def GetSimValAgainstAC(dbfp, act_list, index_set, fptype):
@@ -79,10 +83,10 @@ def GetSimValAgainstAC(dbfp, act_list, index_set, fptype):
 	return maxval
 
 def UpdateRanking(set_nb, mol_id, idx, tanimoto, KA, ranking, topn):
-	index = 0
-	for top_mol in ranking:
-		if tanimoto < top_mol[3]:
-			index = ranking.index(top_mol) + 1
+	index = len(ranking)
+	for top_mol in reversed(ranking):
+		if tanimoto > top_mol[3]:
+			index = ranking.index(top_mol) 
 		else:
 			break
 
@@ -112,15 +116,16 @@ def RankingAnalysis(ranking, nb_ka):
 			count_ka += 1
 		rr = 100 * count_ka/nb_ka
 		hr = 100 * count_ka/count
-		data.append((rr, hr))
+		data.append((mol[0], rr, hr))
 
 	return data
 
-def PlotResults(ranking, plot_output):
-	ranking_by_set = ranking.groupby("Set")
+def PlotResults(data, iteration, plot_output):
+
 	plt.figure(1)
-	for Set, group in ranking_by_set:
-		plt.plot(group['RR'], label = "RR Set " + str(int(Set)))
+	for set_id in range(iteration):
+		set_data = [result[1] for result in data if result[0] == set_id]
+		plt.plot(set_data, label = "RR Set " + str(set_id))
 	plt.xlabel('Top Molecules')
 	plt.ylabel('Rate (%)')
 	plt.legend( loc='best')
@@ -129,8 +134,9 @@ def PlotResults(ranking, plot_output):
 	plt.savefig(path)
 	
 	plt.figure(2)
-	for Set, group in ranking_by_set:
-		plt.plot(group['HR'], label = "HR Set " + str(int(Set)))
+	for set_id in range(iteration):
+		set_data = [result[2] for result in data if result[0] == set_id]
+		plt.plot(set_data, label = "HR Set " + str(set_id))
 	plt.xlabel('Top Molecules')
 	plt.ylabel('Rate (%)')
 	plt.legend( loc='best')
@@ -141,7 +147,7 @@ def PlotResults(ranking, plot_output):
 	plt.show()
 		
 
-def write_output(ranking, data, act_list, dec_list, out, output_dir):
+def write_output(ranking, data, act_list, dec_list, iteration, out, output_dir):
 	ofs = oemolostream()
 	output_path = out
 
@@ -153,20 +159,20 @@ def write_output(ranking, data, act_list, dec_list, out, output_dir):
 			top_mol = act_list[mol[2]]
 		else:
 			top_mol = dec_list[mol[2]]
-		OESetSDData(top_mol, "Similarity Value (Tanimoto) :", mol[3])
-		OESetSDData(top_mol, "Trial Set :", mol[0])
-		print('%s has a similarity of %.3f' % (OEMolToSmiles(top_mol), mol[3]))
+		OESetSDData(top_mol, "Similarity Value (Tanimoto) :", str(mol[3]))
+		OESetSDData(top_mol, "Trial Set :", str(mol[0]))
+		print('Set %d : %s has a similarity of %.3f' % (mol[0], OEMolToSmiles(top_mol), mol[3]))
 		OEWriteMolecule(ofs, top_mol)
 
 	path = output_dir + "ranking.txt"
 	ranking_save = open(path, "w")
 	for mol in ranking:
-		mol_data = mol[0] + " " + mol[1] + " " +mol[3]
+		mol_data = str(mol[0]) + " " + str(mol[1]) + " " + str(mol[3])
 		print(mol_data)
 		ranking_save.write(mol_data)
 	ranking_save.close()
 
-	PlotResults(ranking, output_dir)
+	PlotResults(data, iteration, output_dir)
 
 def main(argv=[__name__]):
 	itf = OEInterface(InterfaceData, argv)
@@ -203,7 +209,7 @@ def main(argv=[__name__]):
 		data = data + new_data
         
        #average_result = pd.DataFrame(ranking.reset_index().groupby("index")["RR"].mean()
-	write_output(ranking, data, act_list, dec_list, out, od)
+	write_output(ranking, data, act_list, dec_list, iteration, out, od)
 
 
 InterfaceData = """
