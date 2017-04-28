@@ -64,8 +64,8 @@ def RankDatabase(act_list, dec_list, index_set, set_nb, fptype, topn, nb_ka):
 			simval = GetSimValAgainstAC(dbfp, act_list, index_set, fptype)
 			ranking = UpdateRanking(set_nb, mol_id, idx, simval, KA, ranking, topn)
 
-		ranking = RankingAnalysis(ranking, nb_ka)
-		return ranking
+		data = RankingAnalysis(ranking, nb_ka)
+		return ranking, data
 
 def GetSimValAgainstAC(dbfp, act_list, index_set, fptype):
 	maxval = 0
@@ -141,26 +141,31 @@ def PlotResults(ranking, plot_output):
 	plt.show()
 		
 
-def write_output(ranking, act_list, dec_list, out, output_dir):
+def write_output(ranking, data, act_list, dec_list, out, output_dir):
 	ofs = oemolostream()
 	output_path = out
 
 	if not ofs.open(output_path):
 		OEThrow.Warning( "Unable to create output file")
 
-	for index, mol in ranking.iterrows():
-		if mol["KA"] == 1 :
-			top_mol = act_list[int(mol["idx"])]
+	for mol in ranking:
+		if mol[4] == 1 :
+			top_mol = act_list[mol[2]]
 		else:
-			top_mol = dec_list[int(mol["idx"])]
-		OESetSDData(top_mol, "Similarity Value (Tanimoto) :", str(mol["Tanimoto"]))
-		OESetSDData(top_mol, "Trial Set :", str(mol["Set"]))
-		print('%s has a similarity of %.3f' % (OEMolToSmiles(top_mol), mol["Tanimoto"]))
+			top_mol = dec_list[mol[2]]
+		OESetSDData(top_mol, "Similarity Value (Tanimoto) :", mol[3])
+		OESetSDData(top_mol, "Trial Set :", mol[0])
+		print('%s has a similarity of %.3f' % (OEMolToSmiles(top_mol), mol[3]))
 		OEWriteMolecule(ofs, top_mol)
 
-	path = output_dir + "ranking.csv"
-	ranking[["Set", "Molecule ID", "Tanimoto"]].to_csv(path)
-	print(ranking)
+	path = output_dir + "ranking.txt"
+	ranking_save = open(path, "w")
+	for mol in ranking:
+		mol_data = mol[0] + " " + mol[1] + " " +mol[3]
+		print(mol_data)
+		ranking_save.write(mol_data)
+	ranking_save.close()
+
 	PlotResults(ranking, output_dir)
 
 def main(argv=[__name__]):
@@ -187,15 +192,18 @@ def main(argv=[__name__]):
 
 	i = 0
 	with open(outs, 'w'): pass
-	ranking = pd.DataFrame(columns=["Set", "Molecule ID", "idx", "Tanimoto", "Rank", "KA", "Nb_KA", "Count", "RR", "HR"])
+	ranking = []
+	data = []
 
 	for i in range(iteration):
 		print("Calculating iteration %d..." % i)
 		index_set = RandomIndex(nb_act, nb_baits, outs, i)
-		ranking = pd.concat([ranking, RankDatabase(act_list, dec_list, index_set, i, fptype, topn, nb_ka)])
+		(new_ranking, new_data) = RankDatabase(act_list, dec_list, index_set, i, fptype, topn, nb_ka)
+		ranking = ranking + new_ranking
+		data = data + new_data
         
        #average_result = pd.DataFrame(ranking.reset_index().groupby("index")["RR"].mean()
-	write_output(ranking, act_list, dec_list, out, od)
+	write_output(ranking, data, act_list, dec_list, out, od)
 
 
 InterfaceData = """
