@@ -6,7 +6,6 @@ from openeye.oegraphsim import *
 import sys
 import os
 import random
-import time
 
 import pandas as pd
 import numpy as np
@@ -49,9 +48,8 @@ def CalculateFP(mol_list, fptype):
 		OEMakeFP(fp, mol_list[idx], fptype)
 		mol_list[idx].SetData(str(fptype), fp)
 
-def RankDatabase(act_list, dec_list, index_set, set_nb, fptype, topn, nb_ka, start_time):
+def RankDatabase(act_list, dec_list, index_set, set_nb, fptype, topn, nb_ka):
 		ranking = pd.DataFrame(columns=["Set", "Molecule ID", "idx", "Tanimoto", "Rank", "KA"])
-		print("start ranking ka : ", time.time() - start_time)
 		for idx in range(len(act_list)):
 			if idx not in index_set:
 				dbfp = act_list[idx].GetData(str(fptype))
@@ -59,20 +57,14 @@ def RankDatabase(act_list, dec_list, index_set, set_nb, fptype, topn, nb_ka, sta
 				KA = 1
 				simval = GetSimValAgainstAC(dbfp, act_list, index_set, fptype)
 				ranking = UpdateRanking(set_nb, mol_id, idx, simval, KA, ranking, topn)
-		print("start ranking dec : ", time.time() - start_time)
 		for idx in range(len(dec_list)):
 			dbfp = dec_list[idx].GetData(str(fptype))
 			mol_id = dec_list[idx].GetTitle()
 			KA = 0
-			print("Before simval : ", time.time() - start_time)
 			simval = GetSimValAgainstAC(dbfp, act_list, index_set, fptype)
-			print("Before ranking : ", time.time() - start_time)
 			ranking = UpdateRanking(set_nb, mol_id, idx, simval, KA, ranking, topn)
-			print("After ranking : ", time.time() - start_time)		
 
-		print("start analysis : ", time.time() - start_time)
 		ranking = RankingAnalysis(ranking, nb_ka)
-		print("end analysis : ", time.time() - start_time)
 		return ranking
 
 def GetSimValAgainstAC(dbfp, act_list, index_set, fptype):
@@ -152,7 +144,6 @@ def write_output(ranking, act_list, dec_list, out, output_dir):
 	PlotResults(ranking, output_dir)
 
 def main(argv=[__name__]):
-	start_time = time.time()
 	itf = OEInterface(InterfaceData, argv)
 
 	ina = itf.GetString("-in_act_database")
@@ -181,7 +172,7 @@ def main(argv=[__name__]):
 	for i in range(iteration):
 		print("Calculating iteration %d..." % i)
 		index_set = RandomIndex(nb_act, nb_baits, outs, i)
-		ranking = pd.concat([ranking, RankDatabase(act_list, dec_list, index_set, i, fptype, topn, nb_ka, start_time)])
+		ranking = pd.concat([ranking, RankDatabase(act_list, dec_list, index_set, i, fptype, topn, nb_ka)])
         
        #average_result = pd.DataFrame(ranking.reset_index().groupby("index")["RR"].mean()
 	write_output(ranking, act_list, dec_list, out, od)
