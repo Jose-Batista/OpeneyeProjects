@@ -49,7 +49,7 @@ def CalculateFP(mol_list, fptype):
 		mol_list[idx].SetData(str(fptype), fp)
 
 def RankDatabase(act_list, dec_list, index_set, set_nb, fptype, topn, nb_ka):
-		ranking = pd.DataFrame(columns=["Set", "Molecule ID", "idx", "Tanimoto", "Rank", "KA"])
+		ranking = []
 		for idx in range(len(act_list)):
 			if idx not in index_set:
 				dbfp = act_list[idx].GetData(str(fptype))
@@ -103,12 +103,18 @@ def UpdateRanking(set_nb, mol_id, idx, tanimoto, KA, ranking, topn):
 
 
 def RankingAnalysis(ranking, nb_ka):
-	ranking["Nb_KA"] = ranking.KA.cumsum()
-	ranking["Count"] = 1
-	ranking["RR"] = 100 * ranking.Nb_KA/nb_ka
-	ranking["HR"] = 100 * ranking.Nb_KA/ranking.Count.cumsum()
+	data = []
+	count = 0
+	count_ka = 0
+	for mol in ranking:
+		count += 1
+		if mol[4] == 1:
+			count_ka += 1
+		rr = 100 * count_ka/nb_ka
+		hr = 100 * count_ka/count
+		data.append((rr, hr))
 
-	return ranking
+	return data
 
 def PlotResults(ranking, plot_output):
 	ranking_by_set = ranking.groupby("Set")
