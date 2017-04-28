@@ -79,14 +79,28 @@ def GetSimValAgainstAC(dbfp, act_list, index_set, fptype):
 	return maxval
 
 def UpdateRanking(set_nb, mol_id, idx, tanimoto, KA, ranking, topn):
-	ranking.loc[len(ranking)] = [set_nb, mol_id, idx, tanimoto, np.NaN, KA]
-	ranking["Rank"] = ranking["Tanimoto"].rank(method = "min", ascending = 0)
-	ranking = ranking[ranking["Rank"] < topn + 1]
-	ranking = ranking.sort_values('Rank')
-	ranking = ranking.reset_index()
-	ranking = ranking.drop(['index'], axis = 1)
+	index = 0
+	for top_mol in ranking:
+		if tanimoto < top_mol[3]:
+			index = ranking.index(top_mol) + 1
+		else:
+			break
+
+	upper = ranking[:index]
+	lower = ranking[index:]
+	ranking = upper + [(set_nb, mol_id, idx, tanimoto, KA)] + lower
+
+	i = topn - 1
+	while i < len(ranking) - 1:
+		if ranking[i][3] != ranking[i + 1][3]:
+			ranking = ranking[:i + 1]
+
+			break
+		else:
+			i += 1
 
 	return ranking
+
 
 def RankingAnalysis(ranking, nb_ka):
 	ranking["Nb_KA"] = ranking.KA.cumsum()
