@@ -22,25 +22,20 @@ def read_database(database):
 		mol_list.append(mol.CreateCopy())
 	return mol_list
 
-def RandomIndex(total, nb_index, index_log, iteration):
-	i = 0
-	index_set = set()
-	while i < nb_index :
-		index = random.randint(0, total - 1)
-		if index in index_set:
-			continue
-		else : 
-			index_set.add(index)
-			i += 1
+def ReadIndex(index_input):
+	index_log = open(index_input, 'r')
+	index = index_log.read()
+	index_list = index.split('set N°')
+	index_list = index_list[1:]
+	for set, random_set in enumerate(index_list):
+		random_set = random_set.split(' ')
+		random_set = random_set[1:-1]
+		for i, idx in enumerate(random_set):
+			random_set[i] = int(idx)
+		index_list[set] = random_set
 
-	index_log = open(index_log, "a")
-	index_log.write("set N°%d: " % iteration)
-	for index in index_set:
-		index_log.write(str(index) + " ")
-	index_log.write("\n")
 	index_log.close()
-
-	return index_set
+	return index_list
 
 def CalculateFP(mol_list, fptype):
 	for idx in range(len(mol_list)):
@@ -48,16 +43,16 @@ def CalculateFP(mol_list, fptype):
 		OEMakeFP(fp, mol_list[idx], fptype)
 		mol_list[idx].SetData(str(fptype), fp)
 
-def RankDatabase(act_list, dec_database, index_set, set_nb, fptype, topn, nb_ka):
+def RankDatabase(act_list, dec_database, index_list, set_nb, fptype, topn, nb_ka):
 		ranking = []
 
 		print("start")
 
 		for idx in range(len(act_list)):
-			if idx not in index_set:
+			if idx not in index_list[set_nb]:
 				dbfp = act_list[idx].GetData(str(fptype))
 
-				simval = GetSimValAgainstAC(dbfp, act_list, index_set, fptype)
+				simval = GetSimValAgainstAC(dbfp, act_list, index_list,set_nb,  fptype)
 
 				OESetSDData(act_list[idx], "Similarity Value (Tanimoto) :", str(simval))
 				OESetSDData(act_list[idx], "Trial Set :", str(set_nb))
@@ -77,7 +72,7 @@ def RankDatabase(act_list, dec_database, index_set, set_nb, fptype, topn, nb_ka)
 			OEMakeFP(dbfp, mol, fptype)
 			mol.SetData(str(fptype), dbfp)
 			
-			simval = GetSimValAgainstAC(dbfp, act_list, index_set, fptype)
+			simval = GetSimValAgainstAC(dbfp, act_list, index_list, set_nb, fptype)
 
 			OESetSDData(mol, "Similarity Value (Tanimoto) :", str(simval))
 			OESetSDData(mol, "Trial Set :", str(set_nb))
@@ -91,9 +86,9 @@ def RankDatabase(act_list, dec_database, index_set, set_nb, fptype, topn, nb_ka)
 		print ("end")
 		return ranking, data
 
-def GetSimValAgainstAC(dbfp, act_list, index_set, fptype):
+def GetSimValAgainstAC(dbfp, act_list, index_list, set_nb, fptype):
 	maxval = 0
-	for idx in index_set:
+	for idx in index_list[set_nb]:
 		fp_act = act_list[idx].GetData(str(fptype))
 		if not fp_act.IsValid():
 			print("fp_act uninitialized fingerprint")
@@ -191,8 +186,8 @@ def main(argv=[__name__]):
 
 	ina = itf.GetString("-in_act_database")
 	ind = itf.GetString("-in_decoys")
+	ini = itf.GetString("-in_index_set")
 	out = itf.GetString("-output")
-	outs = itf.GetString("-out_index_set")
 	od = itf.GetString("-output_directory")
 	topn = itf.GetInt("-topN")
 	fptype = itf.GetInt("-fprint")
@@ -207,14 +202,14 @@ def main(argv=[__name__]):
 	CalculateFP(act_list, fptype)
 
 	i = 0
-	with open(outs, 'w'): pass
 	ranking = []
 	data = []
+	index_list = ReadIndex(ini)
 
 	for i in range(iteration):
 		print("Calculating iteration %d..." % i)
-		index_set = RandomIndex(nb_act, nb_baits, outs, i)
-		(new_ranking, new_data) = RankDatabase(act_list, ind, index_set, i, fptype, topn, nb_ka)
+	
+		(new_ranking, new_data) = RankDatabase(act_list, ind, index_list, i, fptype, topn, nb_ka)
 		ranking = ranking + new_ranking
 		data = data + new_data
         
@@ -239,19 +234,18 @@ InterfaceData = """
 	!KEYLESS 2
 !END
 
-!PARAMETER -output
-	!ALIAS -o
+!PARAMETER -in_index_set
+	!ALIAS -ii
 	!TYPE string
-	!BRIEF Output File
+	!BRIEF Input Random Index Set Log
 	!REQUIRED true
 	!KEYLESS 3
 !END
 
-
-!PARAMETER -out_index_set
-	!ALIAS -os
+!PARAMETER -output
+	!ALIAS -o
 	!TYPE string
-	!BRIEF Output Random Index Set Log
+	!BRIEF Output File
 	!REQUIRED true
 	!KEYLESS 4
 !END
