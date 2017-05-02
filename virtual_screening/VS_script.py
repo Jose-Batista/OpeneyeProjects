@@ -191,12 +191,11 @@ def main(argv=[__name__]):
 	topn = itf.GetInt("-topN")
 	fptype = itf.GetInt("-fprint")
 	iteration = itf.GetInt("-iteration")
-	ratio = itf.GetInt("-ratio")
 
 	index_list = ReadIndex(ini)
 	act_list = read_database(ina, fptype)
 	nb_act = len(act_list)
-	nb_baits = nb_act//(ratio + 1)
+	nb_baits = len(index_list[0])
 	nb_ka = nb_act - nb_baits
 
 	ranking = []
@@ -278,14 +277,6 @@ InterfaceData = """
 	!KEYLESS 8
 !END
 
-!PARAMETER -ratio
-	!ALIAS -r
-	!TYPE int
-	!BRIEF Ratio between Baits and Known Actives
-	!REQUIRED false
-	!DEFAULT 2
-	!KEYLESS 9
-!END
 """
 
 if __name__ == "__main__":
