@@ -41,7 +41,7 @@ def ReadIndex(index_input):
 	return index_list
 
 
-def RankDatabase(act_list, dec_database, index_list, set_nb, fptype, topn, nb_ka):
+def RankDatabase(act_list, index_list, set_nb, fptype, topn):
 		ranking = []
 
 		print("start")
@@ -59,32 +59,8 @@ def RankDatabase(act_list, dec_database, index_list, set_nb, fptype, topn, nb_ka
 				#OESetSDData(act_list[idx], "Known Active :", str(KA))
 				
 				ranking = UpdateRanking(set_nb, mol_id, simval, KA, ranking, topn)
-		
-		print("start decoys")
-		ifs = oemolistream()
 
-		if not ifs.open(dec_database):
-			OEThrow.Fatal("Unable to open inputfile" )
-
-		for mol in ifs.GetOEMols():
-			dbfp = OEFingerPrint()
-			OEMakeFP(dbfp, mol, fptype)
-			#mol.SetData(str(fptype), dbfp)
-			
-			simval = GetSimValAgainstAC(dbfp, act_list, index_list, set_nb, fptype)
-
-			#OESetSDData(mol, "Similarity Value (Tanimoto) :", str(simval))
-			#OESetSDData(mol, "Trial Set :", str(set_nb))
-			mol_id = mol.GetTitle()
-			KA = 0
-			#OESetSDData(mol, "Known Active :", str(KA))
-
-			ranking = UpdateRanking(set_nb, mol_id, simval, KA, ranking, topn)
-
-		print("start analysis")
-		data = RankingAnalysis(ranking, nb_ka)
-		print ("end")
-		return ranking, data
+		return ranking
 
 def GetSimValAgainstAC(dbfp, act_list, index_list, set_nb, fptype):
 	maxval = 0
@@ -120,21 +96,24 @@ def UpdateRanking(set_nb, mol_id, tanimoto, KA, ranking, topn):
 
 	return ranking
 
-def RankingAnalysis(ranking, nb_ka):
-	data = []
-	count = 0
-	count_ka = 0
-	for mol in ranking:
-		count += 1
-		if mol[3] == 1:
-			count_ka += 1
-		rr = 100 * count_ka/nb_ka
-		hr = 100 * count_ka/count
-		data.append((rr, hr))
+def RankingAnalysis(ranking, nb_ka, iteration):
+	results = []
+	for i in range(iteration)
+		set_results = []
+		count = 0
+		count_ka = 0
+		for mol in ranking[i][2]:
+			count += 1
+			if mol[3] == 1:
+				count_ka += 1
+			rr = 100 * count_ka/nb_ka
+			hr = 100 * count_ka/count
+			set_results.append((rr, hr))
+		results.append((i, set_results))
 
-	return data
+	return results
 
-def PlotResults(data, iteration, plot_output):
+def PlotResults(results, iteration, plot_output):
 
 	plt.figure(1)
 	for data_set in data:
@@ -161,7 +140,7 @@ def PlotResults(data, iteration, plot_output):
 	plt.show()
 		
 
-def write_output(ranking, data, iteration, out, output_dir):
+def write_output(ranking, results, iteration, out, output_dir):
 	#ofs = oemolostream()
 	#output_path = out
 
@@ -173,12 +152,13 @@ def write_output(ranking, data, iteration, out, output_dir):
 
 	path = output_dir + "ranking.txt"
 	ranking_save = open(path, "w")
-	for mol in ranking:
-		mol_data = str(mol[0]) + " " + mol[1] + " " + str(mol[2])
-		ranking_save.write(mol_data)
+	for i in range(iteration):
+		for mol in ranking[i][2]:
+			mol_data = str(i) + " " + mol[1] + " " + str(mol[2])
+			ranking_save.write(mol_data)
 	ranking_save.close()
 
-	PlotResults(data, iteration, output_dir)
+	PlotResults(results, iteration, output_dir)
 
 def main(argv=[__name__]):
 	itf = OEInterface(InterfaceData, argv)
@@ -194,22 +174,47 @@ def main(argv=[__name__]):
 
 	index_list = ReadIndex(ini)
 	act_list = read_database(ina, fptype)
-	nb_act = len(act_list)
-	nb_baits = len(index_list[0])
-	nb_ka = nb_act - nb_baits
+	
+	nb_ka = len(act_list) - len(index_list[0])
 
 	ranking = []
-	data = []
+	results = []
 
 	for i in range(iteration):
-		print("Calculating iteration %d..." % i)
+		ranking.append((i, RankDatabase(act_list, index_list, i, fptype, topn)))
+
+	ifs = oemolistream()
+	if not ifs.open(ind):
+		OEThrow.Fatal("Unable to open inputfile" )
+
+	for mol in ifs.GetOEMols():
+		dbfp = OEFingerPrint()
+		OEMakeFP(dbfp, mol, fptype)
+		#mol.SetData(str(fptype), dbfp)
+
+		for i in range(iteration):
+			simval = GetSimValAgainstAC(dbfp, act_list, index_list, i, fptype)
+
+			#OESetSDData(mol, "Similarity Value (Tanimoto) :", str(simval))
+			#OESetSDData(mol, "Trial Set :", str(set_nb))
+			mol_id = mol.GetTitle()
+			KA = 0
+			#OESetSDData(mol, "Known Active :", str(KA))
+
+			ranking[i] = (i, UpdateRanking(i, mol_id, simval, KA, ranking[i][2], topn))
+
 	
-		(new_ranking, new_data) = RankDatabase(act_list, ind, index_list, i, fptype, topn, nb_ka)
-		ranking = ranking + new_ranking
-		data.append((i, new_data))
+#	for i in range(iteration):
+#		print("Calculating iteration %d..." % i)
+#	
+#		(cur_ranking, cur_results) = RankDatabase(act_list, ind, index_list, i, fptype, topn, nb_ka)
+#		ranking = ranking + cur_ranking
+#		results.append((i, cur_results))
         
        #Average
-	write_output(ranking, data, iteration, out, od)
+
+    results = RankingAnalysis(ranking, nb_ka, iteration)
+	write_output(ranking, results, iteration, out, od)
 
 
 InterfaceData = """
