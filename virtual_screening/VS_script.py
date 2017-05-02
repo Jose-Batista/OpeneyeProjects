@@ -41,21 +41,22 @@ def ReadIndex(index_input):
 	return index_list
 
 
-def RankActives(act_list, index_list, fptype, topn, iteration):
+def RankActives(act_list, index_list, fptype, topn):
 
 	ranking_list = list()
 
 	for baitset in index_list:
 		ranking = list()
+		baitset.append(len(act_list + 1))
 		c = 0
 		for idx in baitset:
 			while c < idx:
 				fp = act_list[c].GetData(str(fptype))
 				simval = GetSimValAgainstAC(fp, act_list, baitset, fptype)
-				mol_id = act_list[c].GetTitle()
 				ranking = UpdateRanking(act_list[c], simval, True, ranking, topn)
 				c += 1
 			c += 1
+		
 		ranking_list.append(ranking)
 
 #----------------------------------------------------
@@ -195,7 +196,7 @@ def main(argv=[__name__]):
 
 	print("Ranking the Known Actives")
 	
-	ranking_list = RankActives(act_list, index_list, fptype, topn, iteration)
+	ranking_list = RankActives(act_list, index_list, fptype, topn)
 
 	print("Ranking the decoys")
 	ifs = oemolistream()
