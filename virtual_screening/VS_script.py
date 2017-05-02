@@ -11,7 +11,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-def read_database(database):
+def read_database(database, fptype):
 	ifs = oemolistream()
 
 	if not ifs.open(database):
@@ -19,6 +19,9 @@ def read_database(database):
 
 	mol_list = []
 	for mol in ifs.GetOEMols():
+		fp = OEFingerPrint()
+		OEMakeFP(fp, mol, fptype)
+		mol.SetData(str(fptype), fp)
 		mol_list.append(mol.CreateCopy())
 	return mol_list
 
@@ -37,11 +40,6 @@ def ReadIndex(index_input):
 	index_log.close()
 	return index_list
 
-def CalculateFP(mol_list, fptype):
-	for idx in range(len(mol_list)):
-		fp = OEFingerPrint()
-		OEMakeFP(fp, mol_list[idx], fptype)
-		mol_list[idx].SetData(str(fptype), fp)
 
 def RankDatabase(act_list, dec_database, index_list, set_nb, fptype, topn, nb_ka):
 		ranking = []
@@ -194,12 +192,10 @@ def main(argv=[__name__]):
 	iteration = itf.GetInt("-iteration")
 	ratio = itf.GetInt("-ratio")
 
-	act_list = read_database(ina)
+	act_list = read_database(ina, fptype)
 	nb_act = len(act_list)
 	nb_baits = nb_act//(ratio + 1)
 	nb_ka = nb_act - nb_baits
-
-	CalculateFP(act_list, fptype)
 
 	i = 0
 	ranking = []
