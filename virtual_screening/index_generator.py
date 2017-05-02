@@ -4,7 +4,7 @@ import sys
 import os
 import random
 
-def RandomIndex(total, nb_index, index_out, iteration):
+def RandomIndex(total, nb_index, iteration, index_out):
 	with open(index_out, "w"): pass
 	
 	for iter in range (iteration):
@@ -33,4 +33,52 @@ nb_index = total//(3)
 index_out = 'clean_databases/FA10/index_log_FA10.txt'
 iteration = 5
 
-RandomIndex(total, nb_index, index_out, iteration)
+def main(argv=[__name__]):
+	itf = OEInterface(InterfaceData, argv)
+
+	tot_range = itf.GetInt("-range")
+	ratio = itf.GetInt("-ratio")
+	iteration = itf.GetInt("-iteration")
+	index_out = itf.GetString("-output")
+
+	nb_index = tot_range//(ratio + 1)
+
+	RandomIndex(tot_range, nb_index, iteration, index_out)
+
+InterfaceData = """
+!PARAMETER -range
+	!ALIAS -ran
+	!TYPE int
+	!BRIEF Range of the Randomised set
+	!REQUIRED true
+	!KEYLESS 1
+!END
+
+!PARAMETER -ratio
+	!ALIAS -rat
+	!TYPE int
+	!BRIEF Ratio of index generated
+	!REQUIRED true
+	!KEYLESS 2
+!END
+
+!PARAMETER -iteration
+	!ALIAS -iter
+	!TYPE int
+	!BRIEF Number of Iterations wanted for the Test
+	!REQUIRED true
+	!KEYLESS 3
+!END
+
+!PARAMETER -output
+	!ALIAS -o
+	!TYPE string
+	!BRIEF Output File
+	!REQUIRED true
+	!KEYLESS 4
+!END
+
+"""
+
+if __name__ == "__main__":
+		sys.exit(main(sys.argv))
