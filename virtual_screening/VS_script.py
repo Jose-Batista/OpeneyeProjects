@@ -50,16 +50,17 @@ def RankDatabase(act_list, dec_database, index_list, set_nb, fptype, topn, nb_ka
 			if idx not in index_list[set_nb]:
 				dbfp = act_list[idx].GetData(str(fptype))
 
-				simval = GetSimValAgainstAC(dbfp, act_list, index_list,set_nb,  fptype)
+				simval = GetSimValAgainstAC(dbfp, act_list, index_list, set_nb, fptype)
 
-				OESetSDData(act_list[idx], "Similarity Value (Tanimoto) :", str(simval))
-				OESetSDData(act_list[idx], "Trial Set :", str(set_nb))
+				#OESetSDData(act_list[idx], "Similarity Value (Tanimoto) :", str(simval))
+				#OESetSDData(act_list[idx], "Trial Set :", str(set_nb))
+				mol_id = act_list[idx].GetTitle()
 				KA = 1
-				OESetSDData(act_list[idx], "Known Active :", str(KA))
+				#OESetSDData(act_list[idx], "Known Active :", str(KA))
 				
-				ranking = UpdateRanking(set_nb, act_list[idx], simval, KA, ranking, topn)
+				ranking = UpdateRanking(set_nb, mol_id, simval, KA, ranking, topn)
+		
 		print("start decoys")
-
 		ifs = oemolistream()
 
 		if not ifs.open(dec_database):
@@ -68,16 +69,17 @@ def RankDatabase(act_list, dec_database, index_list, set_nb, fptype, topn, nb_ka
 		for mol in ifs.GetOEMols():
 			dbfp = OEFingerPrint()
 			OEMakeFP(dbfp, mol, fptype)
-			mol.SetData(str(fptype), dbfp)
+			#mol.SetData(str(fptype), dbfp)
 			
 			simval = GetSimValAgainstAC(dbfp, act_list, index_list, set_nb, fptype)
 
-			OESetSDData(mol, "Similarity Value (Tanimoto) :", str(simval))
-			OESetSDData(mol, "Trial Set :", str(set_nb))
+			#OESetSDData(mol, "Similarity Value (Tanimoto) :", str(simval))
+			#OESetSDData(mol, "Trial Set :", str(set_nb))
+			mol_id = mol.GetTitle()
 			KA = 0
-			OESetSDData(mol, "Known Active :", str(KA))
+			#OESetSDData(mol, "Known Active :", str(KA))
 
-			ranking = UpdateRanking(set_nb, mol, simval, KA, ranking, topn)
+			ranking = UpdateRanking(set_nb, mol_id, simval, KA, ranking, topn)
 
 		print("start analysis")
 		data = RankingAnalysis(ranking, nb_ka)
@@ -95,7 +97,7 @@ def GetSimValAgainstAC(dbfp, act_list, index_list, set_nb, fptype):
 			maxval = tanimoto
 	return maxval
 
-def UpdateRanking(set_nb, mol, tanimoto, KA, ranking, topn):
+def UpdateRanking(set_nb, mol_id, tanimoto, KA, ranking, topn):
 	index = len(ranking)
 	for top_mol in reversed(ranking):
 		if tanimoto > top_mol[2]:
@@ -105,7 +107,7 @@ def UpdateRanking(set_nb, mol, tanimoto, KA, ranking, topn):
 
 	upper = ranking[:index]
 	lower = ranking[index:]
-	ranking = upper + [(set_nb, mol, tanimoto, KA)] + lower
+	ranking = upper + [(set_nb, mol_id, tanimoto, KA)] + lower
 
 	i = topn - 1
 	while i < len(ranking) - 1:
@@ -118,7 +120,6 @@ def UpdateRanking(set_nb, mol, tanimoto, KA, ranking, topn):
 
 	return ranking
 
-
 def RankingAnalysis(ranking, nb_ka):
 	data = []
 	count = 0
@@ -129,16 +130,16 @@ def RankingAnalysis(ranking, nb_ka):
 			count_ka += 1
 		rr = 100 * count_ka/nb_ka
 		hr = 100 * count_ka/count
-		data.append((mol[0], rr, hr))
+		data.append((rr, hr))
 
 	return data
 
 def PlotResults(data, iteration, plot_output):
 
 	plt.figure(1)
-	for set_id in range(iteration):
-		set_data = [result[1] for result in data if result[0] == set_id]
-		plt.plot(set_data, label = "RR Set " + str(set_id))
+	for data_set in data:
+		rr_set = [result[0] for result in data_set[1]]
+		plt.plot(rr_set, label = "RR Set " + str(data_set[0]))
 	plt.xlabel('Top Molecules')
 	plt.ylabel('Rate (%)')
 	plt.legend( loc='best')
@@ -147,9 +148,9 @@ def PlotResults(data, iteration, plot_output):
 	plt.savefig(path)
 	
 	plt.figure(2)
-	for set_id in range(iteration):
-		set_data = [result[2] for result in data if result[0] == set_id]
-		plt.plot(set_data, label = "HR Set " + str(set_id))
+	for data_set in data:
+		hr_set = [result[1] for result in data_set[1]]
+		plt.plot(hr_set, label = "HR Set " + str(data_set[0]))
 	plt.xlabel('Top Molecules')
 	plt.ylabel('Rate (%)')
 	plt.legend( loc='best')
@@ -161,19 +162,19 @@ def PlotResults(data, iteration, plot_output):
 		
 
 def write_output(ranking, data, iteration, out, output_dir):
-	ofs = oemolostream()
-	output_path = out
+	#ofs = oemolostream()
+	#output_path = out
 
-	if not ofs.open(output_path):
-		OEThrow.Warning( "Unable to create output file")
+	#if not ofs.open(output_path):
+		#OEThrow.Warning( "Unable to create output file")
 
-	for mol in ranking:
-		OEWriteMolecule(ofs, mol[1])
+	#for mol in ranking:
+	#	OEWriteMolecule(ofs, mol[1])
 
 	path = output_dir + "ranking.txt"
 	ranking_save = open(path, "w")
 	for mol in ranking:
-		mol_data = str(mol[0]) + " " + mol[1].GetTitle() + " " + str(mol[2])
+		mol_data = str(mol[0]) + " " + mol[1] + " " + str(mol[2])
 		ranking_save.write(mol_data)
 	ranking_save.close()
 
@@ -192,24 +193,23 @@ def main(argv=[__name__]):
 	iteration = itf.GetInt("-iteration")
 	ratio = itf.GetInt("-ratio")
 
+	index_list = ReadIndex(ini)
 	act_list = read_database(ina, fptype)
 	nb_act = len(act_list)
 	nb_baits = nb_act//(ratio + 1)
 	nb_ka = nb_act - nb_baits
 
-	i = 0
 	ranking = []
 	data = []
-	index_list = ReadIndex(ini)
 
 	for i in range(iteration):
 		print("Calculating iteration %d..." % i)
 	
 		(new_ranking, new_data) = RankDatabase(act_list, ind, index_list, i, fptype, topn, nb_ka)
 		ranking = ranking + new_ranking
-		data = data + new_data
+		data.append((i, new_data))
         
-       #average_result = pd.DataFrame(ranking.reset_index().groupby("index")["RR"].mean()
+       #Average
 	write_output(ranking, data, iteration, out, od)
 
 
