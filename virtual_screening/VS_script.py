@@ -41,51 +41,66 @@ def ReadIndex(index_input):
 	return index_list
 
 
-def RankDatabase(act_list, index_list, set_nb, fptype, topn):
-		ranking = []
+def RankActives(act_list, index_list, fptype, topn, iteration):
 
-		for idx in range(len(act_list)):
-			if idx not in index_list[set_nb]:
-				dbfp = act_list[idx].GetData(str(fptype))
+	ranking_list = list()
 
-				simval = GetSimValAgainstAC(dbfp, act_list, index_list, set_nb, fptype)
+	for baitset in index_list:
+		ranking = list()
+		c = 0
+		for idx in baitset:
+			while c < idx:
+				fp = act_list[c].GetData(str(fptype))
+				simval = GetSimValAgainstAC(fp, act_list, baitset, fptype)
+				mol_id = act_list[c].GetTitle()
+				ranking = UpdateRanking(act_list[c], simval, True, ranking, topn)
+				c += 1
+			c += 1
+		ranking_list.append(ranking)
+
+#----------------------------------------------------
+
+		#ranking = []
+
+		#for idx in range(len(act_list)):
+		#	if idx not in index_list[set_nb]:
+		#		dbfp = act_list[idx].GetData(str(fptype))
+
+		#		simval = GetSimValAgainstAC(dbfp, act_list, index_list, set_nb, fptype)
 
 				#OESetSDData(act_list[idx], "Similarity Value (Tanimoto) :", str(simval))
 				#OESetSDData(act_list[idx], "Trial Set :", str(set_nb))
-				mol_id = act_list[idx].GetTitle()
-				KA = 1
+		#		KA = 1
 				#OESetSDData(act_list[idx], "Known Active :", str(KA))
 				
-				ranking = UpdateRanking(set_nb, mol_id, simval, KA, ranking, topn)
+		#		ranking = UpdateRanking(mol, simval, KA, ranking, topn)
 
-		return ranking
+	return ranking_list
 
-def GetSimValAgainstAC(dbfp, act_list, index_list, set_nb, fptype):
+def GetSimValAgainstAC(fp, act_list, baitset, fptype):
 	maxval = 0
-	for idx in index_list[set_nb]:
+	for idx in baitset:
 		fp_act = act_list[idx].GetData(str(fptype))
-		if not fp_act.IsValid():
-			print("fp_act uninitialized fingerprint")
-		tanimoto = OETanimoto(dbfp, fp_act)
+		tanimoto = OETanimoto(fp, fp_act)
 		if tanimoto > maxval:
 			maxval = tanimoto
 	return maxval
 
-def UpdateRanking(set_nb, mol_id, tanimoto, KA, ranking, topn):
+def UpdateRanking(mol, tanimoto, KA, ranking, topn):
 	index = len(ranking)
 	for top_mol in reversed(ranking):
-		if tanimoto > top_mol[2]:
+		if tanimoto > top_mol[1]:
 			index = ranking.index(top_mol) 
 		else:
 			break
 
 	upper = ranking[:index]
 	lower = ranking[index:]
-	ranking = upper + [(set_nb, mol_id, tanimoto, KA)] + lower
+	ranking = upper + [(mol.GetTitle(), tanimoto, KA)] + lower
 
 	i = topn - 1
 	while i < len(ranking) - 1:
-		if ranking[i][2] != ranking[i + 1][2]:
+		if ranking[i][1] != ranking[i + 1][1]:
 			ranking = ranking[:i + 1]
 
 			break
@@ -100,14 +115,14 @@ def RankingAnalysis(ranking, nb_ka, iteration):
 		set_results = []
 		count = 0
 		count_ka = 0
-		for mol in ranking[i][1]:
+		for mol in ranking[i]:
 			count += 1
-			if mol[3] == 1:
+			if mol[2] == 1:
 				count_ka += 1
 			rr = 100 * count_ka/nb_ka
 			hr = 100 * count_ka/count
 			set_results.append((rr, hr))
-		results.append((i, set_results))
+		results.append(set_results)
 
 	return results
 
@@ -115,7 +130,7 @@ def PlotResults(results_list, plot_output):
 
 	plt.figure(1)
 	for i, results in enumerate(results_list):
-		rr_set = [result[0] for result in results[1]]
+		rr_set = [result[0] for result in results]
 		plt.plot(rr_set, label = "RR Set " + str(i))
 	plt.xlabel('Top Molecules')
 	plt.ylabel('Rate (%)')
@@ -126,7 +141,7 @@ def PlotResults(results_list, plot_output):
 	
 	plt.figure(2)
 	for i, results in enumerate(results_list):
-		hr_set = [result[1] for result in results[1]]
+		hr_set = [result[1] for result in results]
 		plt.plot(hr_set, label = "HR Set " + str(i))
 	plt.xlabel('Top Molecules')
 	plt.ylabel('Rate (%)')
@@ -135,7 +150,7 @@ def PlotResults(results_list, plot_output):
 	path = plot_output + "HR_plot.svg"
 	plt.savefig(path)
 	
-	plt.show()
+	#plt.show()
 		
 
 def write_output(ranking_list, results, iteration, out, output_dir):
@@ -151,8 +166,8 @@ def write_output(ranking_list, results, iteration, out, output_dir):
 	path = output_dir + "ranking.txt"
 	ranking_save = open(path, "w")
 	for i, ranking in enumerate(ranking_list):
-		for mol in ranking[1]:
-			mol_data = str(i) + " " + mol[1] + " " + str(mol[2])
+		for mol in ranking:
+			mol_data = str(i) + " " + mol[0] + " " + str(mol[1])
 			ranking_save.write(mol_data)
 	ranking_save.close()
 
@@ -170,37 +185,35 @@ def main(argv=[__name__]):
 	fptype = itf.GetInt("-fprint")
 	iteration = itf.GetInt("-iteration")
 
+	print("Reading inputs")
 	index_list = ReadIndex(ini)
 	act_list = read_database(ina, fptype)
 	
 	nb_ka = len(act_list) - len(index_list[0])
 
-	ranking = []
 	results = []
 
-	for i in range(iteration):
-		ranking.append((i, RankDatabase(act_list, index_list, i, fptype, topn)))
+	print("Ranking the Known Actives")
+	
+	ranking_list = RankActives(act_list, index_list, fptype, topn, iteration)
 
-
+	print("Ranking the decoys")
 	ifs = oemolistream()
 	if not ifs.open(ind):
 		OEThrow.Fatal("Unable to open inputfile" )
 
+	dbfp = OEFingerPrint()
 	for mol in ifs.GetOEMols():
-		dbfp = OEFingerPrint()
 		OEMakeFP(dbfp, mol, fptype)
 		#mol.SetData(str(fptype), dbfp)
 
 		for i in range(iteration):
-			simval = GetSimValAgainstAC(dbfp, act_list, index_list, i, fptype)
+			simval = GetSimValAgainstAC(dbfp, act_list, index_list[i], fptype)
 
 			#OESetSDData(mol, "Similarity Value (Tanimoto) :", str(simval))
 			#OESetSDData(mol, "Trial Set :", str(set_nb))
-			mol_id = mol.GetTitle()
-			KA = 0
 			#OESetSDData(mol, "Known Active :", str(KA))
-
-			ranking[i] = (i, UpdateRanking(i, mol_id, simval, KA, ranking[i][1], topn))
+			ranking_list[i] = (UpdateRanking(mol, simval, False, ranking_list[i], topn))
 
 	
 #	for i in range(iteration):
@@ -209,11 +222,12 @@ def main(argv=[__name__]):
 #		(cur_ranking, cur_results) = RankDatabase(act_list, ind, index_list, i, fptype, topn, nb_ka)
 #		ranking = ranking + cur_ranking
 #		results.append((i, cur_results))
-        
-       #Average
-
-	results = RankingAnalysis(ranking, nb_ka, iteration)
-	write_output(ranking, results, iteration, out, od)
+		
+	#Average
+	print("Analysing")
+	results = RankingAnalysis(ranking_list, nb_ka, iteration)
+	print("Printing output")
+	write_output(ranking_list, results, iteration, out, od)
 
 
 InterfaceData = """
