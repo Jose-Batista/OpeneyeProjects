@@ -44,8 +44,6 @@ def ReadIndex(index_input):
 def RankDatabase(act_list, index_list, set_nb, fptype, topn):
 		ranking = []
 
-		print("start")
-
 		for idx in range(len(act_list)):
 			if idx not in index_list[set_nb]:
 				dbfp = act_list[idx].GetData(str(fptype))
@@ -98,11 +96,11 @@ def UpdateRanking(set_nb, mol_id, tanimoto, KA, ranking, topn):
 
 def RankingAnalysis(ranking, nb_ka, iteration):
 	results = []
-	for i in range(iteration)
+	for i in range(iteration):
 		set_results = []
 		count = 0
 		count_ka = 0
-		for mol in ranking[i][2]:
+		for mol in ranking[i][1]:
 			count += 1
 			if mol[3] == 1:
 				count_ka += 1
@@ -113,12 +111,12 @@ def RankingAnalysis(ranking, nb_ka, iteration):
 
 	return results
 
-def PlotResults(results, iteration, plot_output):
+def PlotResults(results_list, plot_output):
 
 	plt.figure(1)
-	for data_set in data:
-		rr_set = [result[0] for result in data_set[1]]
-		plt.plot(rr_set, label = "RR Set " + str(data_set[0]))
+	for i, results in enumerate(results_list):
+		rr_set = [result[0] for result in results[1]]
+		plt.plot(rr_set, label = "RR Set " + str(i))
 	plt.xlabel('Top Molecules')
 	plt.ylabel('Rate (%)')
 	plt.legend( loc='best')
@@ -127,9 +125,9 @@ def PlotResults(results, iteration, plot_output):
 	plt.savefig(path)
 	
 	plt.figure(2)
-	for data_set in data:
-		hr_set = [result[1] for result in data_set[1]]
-		plt.plot(hr_set, label = "HR Set " + str(data_set[0]))
+	for i, results in enumerate(results_list):
+		hr_set = [result[1] for result in results[1]]
+		plt.plot(hr_set, label = "HR Set " + str(i))
 	plt.xlabel('Top Molecules')
 	plt.ylabel('Rate (%)')
 	plt.legend( loc='best')
@@ -140,7 +138,7 @@ def PlotResults(results, iteration, plot_output):
 	plt.show()
 		
 
-def write_output(ranking, results, iteration, out, output_dir):
+def write_output(ranking_list, results, iteration, out, output_dir):
 	#ofs = oemolostream()
 	#output_path = out
 
@@ -152,13 +150,13 @@ def write_output(ranking, results, iteration, out, output_dir):
 
 	path = output_dir + "ranking.txt"
 	ranking_save = open(path, "w")
-	for i in range(iteration):
-		for mol in ranking[i][2]:
+	for i, ranking in enumerate(ranking_list):
+		for mol in ranking[1]:
 			mol_data = str(i) + " " + mol[1] + " " + str(mol[2])
 			ranking_save.write(mol_data)
 	ranking_save.close()
 
-	PlotResults(results, iteration, output_dir)
+	PlotResults(results, output_dir)
 
 def main(argv=[__name__]):
 	itf = OEInterface(InterfaceData, argv)
@@ -183,6 +181,7 @@ def main(argv=[__name__]):
 	for i in range(iteration):
 		ranking.append((i, RankDatabase(act_list, index_list, i, fptype, topn)))
 
+
 	ifs = oemolistream()
 	if not ifs.open(ind):
 		OEThrow.Fatal("Unable to open inputfile" )
@@ -201,7 +200,7 @@ def main(argv=[__name__]):
 			KA = 0
 			#OESetSDData(mol, "Known Active :", str(KA))
 
-			ranking[i] = (i, UpdateRanking(i, mol_id, simval, KA, ranking[i][2], topn))
+			ranking[i] = (i, UpdateRanking(i, mol_id, simval, KA, ranking[i][1], topn))
 
 	
 #	for i in range(iteration):
@@ -213,7 +212,7 @@ def main(argv=[__name__]):
         
        #Average
 
-    results = RankingAnalysis(ranking, nb_ka, iteration)
+	results = RankingAnalysis(ranking, nb_ka, iteration)
 	write_output(ranking, results, iteration, out, od)
 
 
