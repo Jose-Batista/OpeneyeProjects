@@ -1,10 +1,26 @@
 #!/usr/bin/env python
+from __future__ import print_function
+from openeye.oechem import *
 
 import sys
 import os
 import random
 
-def RandomIndex(total, nb_index, iteration, index_out):
+def CountDatabase(database):
+	ifs = oemolistream()
+
+	if not ifs.open(database):
+		OEThrow.Fatal("Unable to open inputfile" )
+
+	count = 0
+
+	for mol in ifs.GetOEMols():
+		count += 1
+	return count
+
+def RandomIndex(total, ratio, iteration, index_out):
+	nb_index = total//(ratio + 1)
+
 	with open(index_out, "w"): pass
 	
 	for iter in range (iteration):
@@ -36,26 +52,26 @@ iteration = 5
 def main(argv=[__name__]):
 	itf = OEInterface(InterfaceData, argv)
 
-	tot_range = itf.GetInt("-range")
+	ina = itf.GetString("-act_database")
 	ratio = itf.GetInt("-ratio")
 	iteration = itf.GetInt("-iteration")
 	index_out = itf.GetString("-output")
 
-	nb_index = tot_range//(ratio + 1)
+	tot_range = CountDatabase(ina)
 
-	RandomIndex(tot_range, nb_index, iteration, index_out)
+	RandomIndex(tot_range, ratio, iteration, index_out)
 
 InterfaceData = """
-!PARAMETER -range
-	!ALIAS -ran
-	!TYPE int
-	!BRIEF Range of the Randomised set
+!PARAMETER -act_database
+	!ALIAS -ad
+	!TYPE string
+	!BRIEF Database to be Counted
 	!REQUIRED true
 	!KEYLESS 1
 !END
 
 !PARAMETER -ratio
-	!ALIAS -rat
+	!ALIAS -r
 	!TYPE int
 	!BRIEF Ratio of index generated
 	!REQUIRED true
@@ -63,7 +79,7 @@ InterfaceData = """
 !END
 
 !PARAMETER -iteration
-	!ALIAS -iter
+	!ALIAS -it
 	!TYPE int
 	!BRIEF Number of Iterations wanted for the Test
 	!REQUIRED true
