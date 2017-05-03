@@ -47,7 +47,6 @@ def RankActives(act_list, index_list, fptype, topn):
 
 	for baitset in index_list:
 		ranking = list()
-		baitset.append(len(act_list + 1))
 		c = 0
 		for idx in baitset:
 			while c < idx:
@@ -56,7 +55,12 @@ def RankActives(act_list, index_list, fptype, topn):
 				ranking = UpdateRanking(act_list[c], simval, True, ranking, topn)
 				c += 1
 			c += 1
-		
+		while c < len(act_list):
+			fp = act_list[c].GetData(str(fptype))
+			simval = GetSimValAgainstAC(fp, act_list, baitset, fptype)
+			ranking = UpdateRanking(act_list[c], simval, True, ranking, topn)
+			c += 1
+
 		ranking_list.append(ranking)
 
 #----------------------------------------------------
@@ -111,19 +115,19 @@ def UpdateRanking(mol, tanimoto, KA, ranking, topn):
 	return ranking
 
 def RankingAnalysis(ranking, nb_ka, iteration):
-	results = []
+	results = pd.Dataframe()
 	for i in range(iteration):
-		set_results = []
+		set_results = pd.Dataframe(columns = ['RR', 'HR'])
 		count = 0
 		count_ka = 0
-		for mol in ranking[i]:
+		for row, mol in enumerate(ranking[i]):
 			count += 1
 			if mol[2] == 1:
 				count_ka += 1
 			rr = 100 * count_ka/nb_ka
 			hr = 100 * count_ka/count
-			set_results.append((rr, hr))
-		results.append(set_results)
+			set_results.loc[row] = [rr, hr]
+		results = pd.concat([results, set_results], axis = 1)
 
 	return results
 
