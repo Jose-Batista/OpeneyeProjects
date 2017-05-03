@@ -154,9 +154,9 @@ def PlotResults(results, plot_output):
     plt.title("Average HR Rates")
     path = plot_output + "Average_HR_plot.svg"
     plt.savefig(path)
-
+    
     #plt.show()
-        
+
 
 def write_output(ranking_list, results, iteration, out, output_dir):
     ofs = oemolostream()
