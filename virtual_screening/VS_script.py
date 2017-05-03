@@ -115,9 +115,9 @@ def UpdateRanking(mol, tanimoto, KA, ranking, topn):
 	return ranking
 
 def RankingAnalysis(ranking, nb_ka, iteration):
-	results = pd.Dataframe()
+	results = pd.DataFrame()
 	for i in range(iteration):
-		set_results = pd.Dataframe(columns = ['RR', 'HR'])
+		set_results = pd.DataFrame(columns = ['RR', 'HR', 'Tanimoto'])
 		count = 0
 		count_ka = 0
 		for row, mol in enumerate(ranking[i]):
@@ -126,36 +126,53 @@ def RankingAnalysis(ranking, nb_ka, iteration):
 				count_ka += 1
 			rr = 100 * count_ka/nb_ka
 			hr = 100 * count_ka/count
-			set_results.loc[row] = [rr, hr]
+			set_results.loc[row] = [rr, hr, mol[1]]
 		results = pd.concat([results, set_results], axis = 1)
 
+	results['Average RR'] = results['RR'].mean(axis=1)
+	results['Average HR'] = results['HR'].mean(axis=1)
+	print(results)
 	return results
 
-def PlotResults(results_list, plot_output):
+def PlotResults(results, plot_output):
 
-	plt.figure(1)
-	for i, results in enumerate(results_list):
-		rr_set = [result[0] for result in results]
-		plt.plot(rr_set, label = "RR Set " + str(i))
-	plt.xlabel('Top Molecules')
+	#plt.figure(1)
+	results.plot(y = 'RR', label = "RR Set ")
+	plt.xlabel('Top Rank Molecules')
 	plt.ylabel('Rate (%)')
 	plt.legend( loc='best')
 	plt.title("RR Rates")
 	path = plot_output + "RR_plot.svg"
 	plt.savefig(path)
 	
-	plt.figure(2)
-	for i, results in enumerate(results_list):
-		hr_set = [result[1] for result in results]
-		plt.plot(hr_set, label = "HR Set " + str(i))
-	plt.xlabel('Top Molecules')
+	#plt.figure(2)
+	results.plot(y = 'HR', label = "HR Set ")
+	plt.xlabel('Top Rank Molecules')
 	plt.ylabel('Rate (%)')
 	plt.legend( loc='best')
 	plt.title("HR Rates")
 	path = plot_output + "HR_plot.svg"
 	plt.savefig(path)
 	
-	#plt.show()
+	#plt.figure(3)
+	results.plot(y = 'Average RR', label = "Average RR")
+	plt.xlabel('Top Rank Molecules')
+	plt.ylabel('Rate (%)')
+	plt.legend( loc='best')
+	plt.title("Average RR Rates")
+	path = plot_output + "Average_RR_plot.svg"
+	plt.savefig(path)
+
+	#plt.figure(4)
+	results.plot(y = 'Average HR', label = "Average HR")
+	plt.xlabel('Top Rank Molecules')
+	plt.ylabel('Rate (%)')
+	plt.legend( loc='best')
+	plt.title("Average HR Rates")
+	path = plot_output + "Average_HR_plot.svg"
+	plt.savefig(path)
+
+	plt.show()
 		
 
 def write_output(ranking_list, results, iteration, out, output_dir):
