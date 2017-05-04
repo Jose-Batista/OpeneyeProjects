@@ -13,7 +13,7 @@ def count_database(database):
         OEThrow.Fatal("Unable to open inputfile" )
 
     count = 0
-    for mol in ifs.GetOEMols():
+    for mol in ifs.GetOEGraphMols():
         count += 1
     return count
 

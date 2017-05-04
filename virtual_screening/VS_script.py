@@ -104,7 +104,7 @@ def UpdateRanking(mol, tanimoto, KA, ranking, topn):
 def RankingAnalysis(ranking, nb_ka, iteration):
     results = pd.DataFrame()
     for i in range(iteration):
-        set_results = pd.DataFrame(columns = ['RR', 'HR'])
+        set_results = pd.DataFrame(columns = ['RR', 'HR', 'Set'])
         count = 0
         count_ka = 0
         for row, mol in enumerate(ranking[i]):
@@ -113,8 +113,8 @@ def RankingAnalysis(ranking, nb_ka, iteration):
                 count_ka += 1
             rr = 100 * count_ka/nb_ka
             hr = 100 * count_ka/count
-            set_results.loc[row] = [rr, hr]
-        results = pd.concat([results, set_results], axis = 1)
+            set_results.loc[row] = [rr, hr, i]
+        results = pd.concat([results, set_results])
 
     results['Average RR'] = results['RR'].mean(axis=1)
     results['Average HR'] = results['HR'].mean(axis=1)
