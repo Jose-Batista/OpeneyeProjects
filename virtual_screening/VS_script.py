@@ -160,7 +160,7 @@ def PlotResults(results, plot_output):
     #plt.show()
 
 
-def write_output(ranking_list, results, iteration, out, output_dir):
+def write_output(ranking_list, results, iteration, output_dir):
     path = output_dir + "ranking.txt"
     ranking_save = open(path, "w")
     for i, ranking in enumerate(ranking_list):
@@ -177,7 +177,6 @@ def main(argv=[__name__]):
     ina = itf.GetString("-in_act_database")
     ind = itf.GetString("-in_decoys")
     ini = itf.GetString("-in_index_set")
-    out = itf.GetString("-output")
     od = itf.GetString("-output_directory")
     topn = itf.GetInt("-topN")
     fptype = itf.GetInt("-fprint")
@@ -216,7 +215,7 @@ def main(argv=[__name__]):
     print("Analysing")
     results = RankingAnalysis(ranking_list, nb_ka, iteration)
     print("Printing output")
-    write_output(ranking_list, results, iteration, out, od)
+    write_output(ranking_list, results, iteration, od)
 
 
 InterfaceData = """
@@ -242,14 +241,6 @@ InterfaceData = """
     !BRIEF Input Random Index Set Log
     !REQUIRED true
     !KEYLESS 3
-!END
-
-!PARAMETER -output
-    !ALIAS -o
-    !TYPE string
-    !BRIEF Output File
-    !REQUIRED true
-    !KEYLESS 4
 !END
 
 !PARAMETER -output_directory
