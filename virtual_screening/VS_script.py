@@ -11,6 +11,8 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
+#list_managment_without_mol_copy
+
 def read_database(database, fptype):
     ifs = oemolistream()
 
