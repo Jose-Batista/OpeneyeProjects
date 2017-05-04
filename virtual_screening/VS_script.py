@@ -248,7 +248,7 @@ InterfaceData = """
     !TYPE string
     !BRIEF Output Directory for the plots and the ranking list
     !REQUIRED true
-    !KEYLESS 5
+    !KEYLESS 4
 !END
 
 !PARAMETER -topN
@@ -256,7 +256,7 @@ InterfaceData = """
     !TYPE int
     !BRIEF Number of top Molecules
     !REQUIRED true
-    !KEYLESS 6
+    !KEYLESS 5
 !END
 
 !PARAMETER -fprint
@@ -264,7 +264,7 @@ InterfaceData = """
     !TYPE int
     !BRIEF Fingerprint Type (101 for MACCS, 102 for Path, 103 for Lingo, 104 for Circular, 105 for Tree)
     !REQUIRED true
-    !KEYLESS 7
+    !KEYLESS 6
 !END
 
 """
