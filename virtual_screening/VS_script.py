@@ -20,35 +20,22 @@ def read_database(database):
 		OEThrow.Fatal("Unable to open inputfile" )
 
 	mol_list = []
-	for mol in ifs.GetOEGraphMols():
+	for mol in ifs.GetOEGraphMols()
+        fp = OEFingerPrint()
+        OEMakeFP(fp, mol, fptype)
+        mol.SetData(str(fptype),fp)
 		mol_list.append(mol.CreateCopy())
 	return mol_list
 
-def RandomIndex(total, nb_index, index_log, iteration):
-	i = 0
-	index_set = set()
-	while i < nb_index :
-		index = random.randint(0, total - 1)
-		if index in index_set:
-			continue
-		else : 
-			index_set.add(index)
-			i += 1
-
-	index_log = open(index_log, "a")
-	index_log.write("set N°%d: " % iteration)
-	for index in index_set:
-		index_log.write(str(index) + " ")
-	index_log.write("\n")
+def ReadIndex(index_input):
+	index_log = open(index_input, "r")
+    index = index_log.read()
+    index_list = index.split('set N°')
+    index_list = index_list[1:]
+    for set_id, random_set in enumerate(index_list):
+        random_set = random_set.split(' ')
 	index_log.close()
-
-	return index_set
-
-def CalculateFP(mol_list, fptype):
-	for idx in range(len(mol_list)):
-		fp = OEFingerPrint()
-		OEMakeFP(fp, mol_list[idx], fptype)
-		mol_list[idx].SetData(str(fptype), fp)
+	return index_lists
 
 def RankDatabase(act_list, dec_list, index_set, set_nb, fptype, topn, nb_ka, start_time):
 		ranking = pd.DataFrame(columns=["Set", "Molecule ID", "idx", "Tanimoto", "Rank", "KA"])
