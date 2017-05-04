@@ -32,12 +32,12 @@ def ReadIndex(index_input):
     index = index_log.read()
     index_list = index.split('set N°')
     index_list = index_list[1:]
-    for set, random_set in enumerate(index_list):
+    for set_id, random_set in enumerate(index_list):
         random_set = random_set.split(' ')
         random_set = random_set[1:-1]
         for i, idx in enumerate(random_set):
             random_set[i] = int(idx)
-        index_list[set] = random_set
+        index_list[set_id] = random_set
 
     index_log.close()
     return index_list
@@ -90,7 +90,7 @@ def UpdateRanking(mol, tanimoto, KA, ranking, topn):
 
     upper = ranking[:index]
     lower = ranking[index:]
-    ranking = upper + [(mol, tanimoto, KA)] + lower
+    ranking = upper + [(mol.CreateCopy(), tanimoto, KA)] + lower
 
     i = topn - 1
     while i < len(ranking) - 1:
@@ -199,10 +199,7 @@ def main(argv=[__name__]):
     nb_ka = len(act_list) - len(index_list[0])
     iteration = len(index_list)
 
-    results = []
-
     print("Ranking the Known Actives")
-    
     ranking_list = RankActives(act_list, index_list, fptype, topn)
 
     print("Ranking the decoys")
