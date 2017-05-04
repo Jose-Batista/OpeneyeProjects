@@ -1,15 +1,10 @@
 #!/usr/bin/env python
 from __future__ import print_function
 from openeye.oechem import *
-from openeye.oegraphsim import *
 
 import sys
 import os
-import random
 
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 
 def count_database(database):
     ifs = oemolistream()
