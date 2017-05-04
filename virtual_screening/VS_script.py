@@ -11,7 +11,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-#try_listmanagement
+#try_listmanagement mod
 
 def read_database(database, fptype):
     ifs = oemolistream()
