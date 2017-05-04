@@ -104,7 +104,7 @@ def UpdateRanking(mol, tanimoto, KA, ranking, topn):
 def RankingAnalysis(ranking, nb_ka, iteration):
     results = pd.DataFrame()
     for i in range(iteration):
-        set_results = pd.DataFrame(columns = ['RR', 'HR', 'Tanimoto'])
+        set_results = pd.DataFrame(columns = ['RR', 'HR'])
         count = 0
         count_ka = 0
         for row, mol in enumerate(ranking[i]):
@@ -113,7 +113,7 @@ def RankingAnalysis(ranking, nb_ka, iteration):
                 count_ka += 1
             rr = 100 * count_ka/nb_ka
             hr = 100 * count_ka/count
-            set_results.loc[row] = [rr, hr, mol[1]]
+            set_results.loc[row] = [rr, hr]
         results = pd.concat([results, set_results], axis = 1)
 
     results['Average RR'] = results['RR'].mean(axis=1)
@@ -189,13 +189,13 @@ def main(argv=[__name__]):
     od = itf.GetString("-output_directory")
     topn = itf.GetInt("-topN")
     fptype = itf.GetInt("-fprint")
-    iteration = itf.GetInt("-iteration")
 
     print("Reading inputs")
     index_list = ReadIndex(ini)
     act_list = read_database(ina, fptype)
     
     nb_ka = len(act_list) - len(index_list[0])
+    iteration = len(index_list)
 
     results = []
 
@@ -282,14 +282,6 @@ InterfaceData = """
     !BRIEF Fingerprint Type (101 for MACCS, 102 for Path, 103 for Lingo, 104 for Circular, 105 for Tree)
     !REQUIRED true
     !KEYLESS 7
-!END
-
-!PARAMETER -iteration
-    !ALIAS -iter
-    !TYPE int
-    !BRIEF Number of Iterations of the Test
-    !REQUIRED true
-    !KEYLESS 8
 !END
 
 """
