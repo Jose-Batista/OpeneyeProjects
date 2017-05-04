@@ -34,48 +34,50 @@ def ReadIndex(index_input):
     index_list = index_list[1:]
     for set_id, random_set in enumerate(index_list):
         random_set = random_set.split(' ')
-	index_log.close()
+        random_set = random_set[1:-1]
+        for i, idx in enumerate(random_set):
+            random_set[i] = int(idx)
+        index_list[set] = random_set
+
+    index_log.close()
 	return index_lists
 
-def RankDatabase(act_list, dec_list, index_set, set_nb, fptype, topn, nb_ka, start_time):
-		ranking = pd.DataFrame(columns=["Set", "Molecule ID", "idx", "Tanimoto", "Rank", "KA"])
-		print("start ranking ka : ", time.time() - start_time)
-		for idx in range(len(act_list)):
-			if idx not in index_set:
-				dbfp = act_list[idx].GetData(str(fptype))
-				mol_id = act_list[idx].GetTitle()
-				KA = 1
-				simval = GetSimValAgainstAC(dbfp, act_list, index_set, fptype)
-				ranking = UpdateRanking(set_nb, mol_id, idx, simval, KA, ranking, topn)
-		print("start ranking dec : ", time.time() - start_time)
-		for idx in range(len(dec_list)):
-			dbfp = dec_list[idx].GetData(str(fptype))
-			mol_id = dec_list[idx].GetTitle()
-			KA = 0
-			print("Before simval : ", time.time() - start_time)
-			simval = GetSimValAgainstAC(dbfp, act_list, index_set, fptype)
-			print("Before ranking : ", time.time() - start_time)
-			ranking = UpdateRanking(set_nb, mol_id, idx, simval, KA, ranking, topn)
-			print("After ranking : ", time.time() - start_time)		
+def RankActives(act_list, index_list, fptype, topn, nb_ka):
+    ranking_list = list()
 
-		print("start analysis : ", time.time() - start_time)
-		ranking = RankingAnalysis(ranking, nb_ka)
-		print("end analysis : ", time.time() - start_time)
-		return ranking
+    for i, baitset in enumerate(index_list):
+        ranking = pd.DataFrame(columns=["Molecule", "idx", "Tanimoto", "Rank", "KA"])
+        c = 0
+        for idx in baitset:
+            while c < idx:
+                fp = act_list[idx].GetData(str(fptype))
+                simval = GetSimValAgainstAC(fp, act_list, baitset, fptype)
+                OESetSDData(act_list[idx], "Similarity Value (Tanimoto) :", str(simval))
+                OESetSDData(act_list[idx], "Trial Set :", str(i))
+                OESetSDData(act_list[idx], "Known Active :", "1")
+                ranking = UpdateRanking(act_list[idx], idx, simval, True, ranking, topn)
+                c += 1
+            c += 1
+        while c < len(act_list):
+            fp = act_list[c].GetData(str(fptype))
+            simval = GetSimValAgainstAC(fp, act_list, baitset, fptype)
+            ranking = UpdateRanking(act_list[c], idx, simval, True, ranking, topn)
+            c += 1
 
-def GetSimValAgainstAC(dbfp, act_list, index_set, fptype):
+        ranking_list.append(ranking)
+    return ranking_list
+
+def GetSimValAgainstAC(fp, act_list, baitset, fptype):
 	maxval = 0
-	for idx in index_set:
+	for idx in baitset:
 		fp_act = act_list[idx].GetData(str(fptype))
-		if not fp_act.IsValid():
-			print("fp_act uninitialized fingerprint")
-		tanimoto = OETanimoto(dbfp, fp_act)
+		tanimoto = OETanimoto(fp, fp_act)
 		if tanimoto > maxval:
 			maxval = tanimoto
 	return maxval
 
-def UpdateRanking(set_nb, mol_id, idx, tanimoto, KA, ranking, topn):
-	ranking.loc[len(ranking)] = [set_nb, mol_id, idx, tanimoto, np.NaN, KA]
+def UpdateRanking(mol, idx, tanimoto, KA, ranking, topn):
+	ranking.loc[len(ranking)] = [mol, idx, tanimoto, np.NaN, KA]
 	ranking["Rank"] = ranking["Tanimoto"].rank(method = "min", ascending = 0)
 	ranking = ranking[ranking["Rank"] < topn + 1]
 	ranking = ranking.sort_values('Rank')
@@ -85,6 +87,7 @@ def UpdateRanking(set_nb, mol_id, idx, tanimoto, KA, ranking, topn):
 	return ranking
 
 def RankingAnalysis(ranking, nb_ka):
+    results = pd.DataFrame()
 	ranking["Nb_KA"] = ranking.KA.cumsum()
 	ranking["Count"] = 1
 	ranking["RR"] = 100 * ranking.Nb_KA/nb_ka
@@ -93,29 +96,40 @@ def RankingAnalysis(ranking, nb_ka):
 	return ranking
 
 def PlotResults(ranking, plot_output):
-	ranking_by_set = ranking.groupby("Set")
-	plt.figure(1)
-	for Set, group in ranking_by_set:
-		plt.plot(group['RR'], label = "RR Set " + str(int(Set)))
-	plt.xlabel('Top Molecules')
-	plt.ylabel('Rate (%)')
-	plt.legend( loc='best')
-	plt.title("RR Rates")
-	path = plot_output + "RR_plot.svg"
-	plt.savefig(path)
-	
-	plt.figure(2)
-	for Set, group in ranking_by_set:
-		plt.plot(group['HR'], label = "HR Set " + str(int(Set)))
-	plt.xlabel('Top Molecules')
-	plt.ylabel('Rate (%)')
-	plt.legend( loc='best')
-	plt.title("HR Rates")
-	path = plot_output + "HR_plot.svg"
-	plt.savefig(path)
-	
-	plt.show()
-		
+
+    results.plot(y = 'RR', label = "RR Set ")
+    plt.xlabel('Top Rank Molecules')
+    plt.ylabel('Rate (%)')
+    plt.legend( loc='best')
+    plt.title("RR Rates")
+    path = plot_output + "RR_plot.svg"
+    plt.savefig(path)
+    
+    results.plot(y = 'HR', label = "HR Set ")
+    plt.xlabel('Top Rank Molecules')
+    plt.ylabel('Rate (%)')
+    plt.legend( loc='best')
+    plt.title("HR Rates")
+    path = plot_output + "HR_plot.svg"
+    plt.savefig(path)
+    
+    results.plot(y = 'Average RR', label = "Average RR")
+    plt.xlabel('Top Rank Molecules')
+    plt.ylabel('Rate (%)')
+    plt.legend( loc='best')
+    plt.title("Average RR Rates")
+    path = plot_output + "Average_RR_plot.svg"
+    plt.savefig(path)
+
+    results.plot(y = 'Average HR', label = "Average HR")
+    plt.xlabel('Top Rank Molecules')
+    plt.ylabel('Rate (%)')
+    plt.legend( loc='best')
+    plt.title("Average HR Rates")
+    path = plot_output + "Average_HR_plot.svg"
+    plt.savefig(path)
+    
+    #plt.show()
 
 def write_output(ranking, act_list, dec_list, out, output_dir):
 	ofs = oemolostream()
@@ -140,40 +154,59 @@ def write_output(ranking, act_list, dec_list, out, output_dir):
 	PlotResults(ranking, output_dir)
 
 def main(argv=[__name__]):
-	start_time = time.time()
 	itf = OEInterface(InterfaceData, argv)
 
-	ina = itf.GetString("-in_act_database")
-	ind = itf.GetString("-in_decoys")
-	out = itf.GetString("-output")
-	outs = itf.GetString("-out_index_set")
-	od = itf.GetString("-output_directory")
-	topn = itf.GetInt("-topN")
-	fptype = itf.GetInt("-fprint")
-	iteration = itf.GetInt("-iteration")
-	ratio = itf.GetInt("-ratio")
+    ina = itf.GetString("-in_act_database")
+    ind = itf.GetString("-in_decoys")
+    ini = itf.GetString("-in_index_set")
+    out = itf.GetString("-output")
+    od = itf.GetString("-output_directory")
+    topn = itf.GetInt("-topN")
+    fptype = itf.GetInt("-fprint")
 
-	act_list = read_database(ina)
-	dec_list = read_database(ind)
-	nb_act = len(act_list)
-	nb_baits = nb_act//(ratio + 1)
-	nb_ka = nb_act - nb_baits
+    print("Reading inputs")
+    index_list = ReadIndex(ini)
+    act_list = read_database(ina, fptype)
+    
+    nb_ka = len(act_list) - len(index_list[0])
+    iteration = len(index_list)
 
-	CalculateFP(act_list, fptype)
-	CalculateFP(dec_list, fptype)
+    print("Ranking the Known Actives")
+    ranking_list = RankActives(act_list, index_list, fptype, topn)
 
-	i = 0
-	with open(outs, 'w'): pass
-	ranking = pd.DataFrame(columns=["Set", "Molecule ID", "idx", "Tanimoto", "Rank", "KA", "Nb_KA", "Count", "RR", "HR"])
+    print("Ranking the decoys")
+    ifs = oemolistream()
+    if not ifs.open(ind):
+        OEThrow.Fatal("Unable to open inputfile" )
 
-	for i in range(iteration):
-		print("Calculating iteration %d..." % i)
-		index_set = RandomIndex(nb_act, nb_baits, outs, i)
-		ranking = pd.concat([ranking, RankDatabase(act_list, dec_list, index_set, i, fptype, topn, nb_ka, start_time)])
+    dbfp = OEFingerPrint()
+    for mol in ifs.GetOEMols():
+        OEMakeFP(dbfp, mol, fptype)
+        mol.SetData(str(fptype), dbfp)
+
+        for i in range(iteration):
+            simval = GetSimValAgainstAC(dbfp, act_list, index_list[i], fptype)
+
+            OESetSDData(mol, "Similarity Value (Tanimoto) :", str(simval))
+            OESetSDData(mol, "Trial Set :", str(i))
+            OESetSDData(mol, "Known Active :",'0' )
+            ranking_list[i] = (UpdateRanking(mol, simval, False, ranking_list[i], topn))
         
-       #average_result = pd.DataFrame(ranking.reset_index().groupby("index")["RR"].mean()
-	write_output(ranking, act_list, dec_list, out, od)
+    print("Analysing")
+    results = RankingAnalysis(ranking_list, nb_ka, iteration)
+    print("Printing output")
+    write_output(ranking_list, results, iteration, out, od)
 
+	#ranking = pd.DataFrame(columns=["Set", "Molecule ID", "idx", "Tanimoto", "Rank", "KA", "Nb_KA", "Count", "RR", "HR"])
+
+	#ranking = pd.concat([ranking, RankDatabase(act_list, dec_list, index_set, i, fptype, topn, nb_ka, start_time)])
+        
+    for idx in range(len(dec_list)):
+        dbfp = dec_list[idx].GetData(str(fptype))
+        mol_id = dec_list[idx].GetTitle()
+        KA = 0
+        simval = GetSimValAgainstAC(dbfp, act_list, index_set, fptype)
+        ranking = UpdateRanking(set_nb, mol_id, idx, simval, KA, ranking, topn)
 
 InterfaceData = """
 !PARAMETER -in_act_database
