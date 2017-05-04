@@ -90,7 +90,7 @@ def UpdateRanking(mol, tanimoto, KA, ranking, topn):
 
     upper = ranking[:index]
     lower = ranking[index:]
-    ranking = upper + [(mol, tanimoto, KA)] + lower
+    ranking = upper + [(mol.GetTitle(), tanimoto, KA)] + lower
 
     i = topn - 1
     while i < len(ranking) - 1:
@@ -161,21 +161,11 @@ def PlotResults(results, plot_output):
 
 
 def write_output(ranking_list, results, iteration, out, output_dir):
-    ofs = oemolostream()
-    output_path = out
-
-    if not ofs.open(output_path):
-        OEThrow.Warning( "Unable to create output file")
-
-    for ranking in ranking_list:
-        for mol in ranking:
-            OEWriteMolecule(ofs, mol[0])
-
     path = output_dir + "ranking.txt"
     ranking_save = open(path, "w")
     for i, ranking in enumerate(ranking_list):
         for mol in ranking:
-            mol_data = str(i) + " " + mol[0].GetTitle() + " " + str(mol[1])
+            mol_data = str(i) + " " + mol[0] + " " + str(mol[1])
             ranking_save.write(mol_data)
     ranking_save.close()
 
