@@ -82,26 +82,29 @@ def GetSimValAgainstAC(fp, act_list, baitset, fptype):
 
 def UpdateRanking(mol, tanimoto, KA, ranking, topn):
     index = len(ranking)
-    for top_mol in reversed(ranking):
-        if tanimoto > top_mol[1]:
-            index = ranking.index(top_mol) 
-        else:
-            break
+    if tanimoto < ranking[index][1]
+        return ranking
+    else:    
+        for top_mol in reversed(ranking):
+            if tanimoto > top_mol[1]:
+                index = ranking.index(top_mol) 
+            else:
+                break
 
-    upper = ranking[:index]
-    lower = ranking[index:]
-    ranking = upper + [(mol, tanimoto, KA)] + lower
+        upper = ranking[:index]
+        lower = ranking[index:]
+        ranking = upper + [(mol, tanimoto, KA)] + lower
 
-    i = topn - 1
-    while i < len(ranking) - 1:
-        if ranking[i][1] != ranking[i + 1][1]:
-            ranking = ranking[:i + 1]
+        i = topn - 1
+        while i < len(ranking) - 1:
+            if ranking[i][1] != ranking[i + 1][1]:
+                ranking = ranking[:i + 1]
 
-            break
-        else:
-            i += 1
+                break
+            else:
+                i += 1
 
-    return ranking
+        return ranking
 
 def RankingAnalysis(ranking, nb_ka, iteration):
     results = pd.DataFrame()
