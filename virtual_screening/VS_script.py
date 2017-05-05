@@ -11,8 +11,6 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-#try_listmanagement mod
-
 def read_database(database, fptype):
     ifs = oemolistream()
 
@@ -106,13 +104,13 @@ def UpdateRanking(mol, tanimoto, KA, ranking, topn):
 
         return ranking
 
-def RankingAnalysis(ranking, nb_ka, iteration):
+def RankingAnalysis(ranking_list, nb_ka):
     results = pd.DataFrame()
-    for i in range(iteration):
+    for ranking in ranking_list:
         set_results = pd.DataFrame(columns = ['RR', 'HR'])
         count = 0
         count_ka = 0
-        for row, mol in enumerate(ranking[i]):
+        for row, mol in enumerate(ranking):
             count += 1
             if mol[2] == 1:
                 count_ka += 1
