@@ -108,8 +108,8 @@ def UpdateRanking(mol, tanimoto, KA, ranking, topn):
 
 def RankingAnalysis(ranking_list, nb_ka):
     results = pd.DataFrame()
-    for ranking in ranking_list:
-        set_results = pd.DataFrame(columns = ['RR', 'HR'])
+    for i, ranking in enumerate(ranking_list):
+        set_results = pd.DataFrame(columns = ['RR', 'HR', 'Set'])
         count = 0
         count_ka = 0
         for row, mol in enumerate(ranking):
@@ -118,32 +118,18 @@ def RankingAnalysis(ranking_list, nb_ka):
                 count_ka += 1
             rr = 100 * count_ka/nb_ka
             hr = 100 * count_ka/count
-            set_results.loc[row] = [rr, hr]
-        results = pd.concat([results, set_results], axis = 1)
-
-    results['Average RR'] = results['RR'].mean(axis=1)
-    results['Average HR'] = results['HR'].mean(axis=1)
-    #print(results)
-    return results
+            set_results.loc[row] = [rr, hr, i]
+        results = pd.concat([results, set_results])
+    
+    results_avg = pd.DataFrame()
+    results_avg['Average RR'] = results.groupby(results.index)['RR'].mean()
+    results_avg['Average HR'] = results.groupby(results.index)['HR'].mean()
+    
+    print(results_avg)
+    return results_avg
 
 def PlotResults(results, plot_output):
 
-    results.plot(y = 'RR', label = "RR Set ")
-    plt.xlabel('Top Rank Molecules')
-    plt.ylabel('Rate (%)')
-    plt.legend( loc='best')
-    plt.title("RR Rates")
-    path = plot_output + "RR_plot.svg"
-    plt.savefig(path)
-    
-    results.plot(y = 'HR', label = "HR Set ")
-    plt.xlabel('Top Rank Molecules')
-    plt.ylabel('Rate (%)')
-    plt.legend( loc='best')
-    plt.title("HR Rates")
-    path = plot_output + "HR_plot.svg"
-    plt.savefig(path)
-    
     results.plot(y = 'Average RR', label = "Average RR")
     plt.xlabel('Top Rank Molecules')
     plt.ylabel('Rate (%)')
@@ -238,7 +224,7 @@ def main(argv=[__name__]):
             ranking_list[i] = (UpdateRanking(mol, simval, False, ranking_list[i], topn))
         
     print("Analysing")
-    results = RankingAnalysis(ranking_list, nb_ka, iteration)
+    results = RankingAnalysis(ranking_list, nb_ka)
     print("Printing output")
     write_output(ranking_list, results, iteration, out, od)
 
