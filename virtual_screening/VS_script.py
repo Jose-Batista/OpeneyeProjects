@@ -6,6 +6,7 @@ from openeye.oegraphsim import *
 import sys
 import os
 import random
+import time
 
 import pandas as pd
 import numpy as np
@@ -17,13 +18,15 @@ def read_database(database, fptype):
     if not ifs.open(database):
         OEThrow.Fatal("Unable to open inputfile" )
 
-    mol_list = []
+    mol_list = list()
+    fp_list = list()
     for mol in ifs.GetOEMols():
         fp = OEFingerPrint()
         OEMakeFP(fp, mol, fptype)
+        fp_list.append(fp)
         mol.SetData(str(fptype), fp)
         mol_list.append(mol.CreateCopy())
-    return mol_list
+    return mol_list, fp_list
 
 def ReadIndex(index_input):
     index_log = open(index_input, 'r')
@@ -41,7 +44,7 @@ def ReadIndex(index_input):
     return index_list
 
 
-def RankActives(act_list, index_list, fptype, topn):
+def RankActives(act_list, index_list, fp_list, fptype, topn):
 
     ranking_list = list()
 
@@ -51,7 +54,7 @@ def RankActives(act_list, index_list, fptype, topn):
         for idx in baitset:
             while c < idx:
                 fp = act_list[c].GetData(str(fptype))
-                simval = GetSimValAgainstAC(fp, act_list, baitset, fptype)
+                simval = GetSimValAgainstAC(fp, fp_list, baitset, fptype)
                 OESetSDData(act_list[idx], "Similarity Value (Tanimoto) :", str(simval))
                 OESetSDData(act_list[idx], "Trial Set :", str(i))
                 OESetSDData(act_list[idx], "Known Active :", "1")
@@ -60,7 +63,7 @@ def RankActives(act_list, index_list, fptype, topn):
             c += 1
         while c < len(act_list):
             fp = act_list[c].GetData(str(fptype))
-            simval = GetSimValAgainstAC(fp, act_list, baitset, fptype)
+            simval = GetSimValAgainstAC(fp, fp_list, baitset, fptype)
             ranking = UpdateRanking(act_list[c], simval, True, ranking, topn)
             c += 1
 
@@ -69,11 +72,10 @@ def RankActives(act_list, index_list, fptype, topn):
 
     return ranking_list
 
-def GetSimValAgainstAC(fp, act_list, baitset, fptype):
+def GetSimValAgainstAC(fp, fp_list, baitset, fptype):
     maxval = 0
     for idx in baitset:
-        fp_act = act_list[idx].GetData(str(fptype))
-        tanimoto = OETanimoto(fp, fp_act)
+        tanimoto = OETanimoto(fp, fp_list[idx])
         if tanimoto > maxval:
             maxval = tanimoto
     return maxval
@@ -193,15 +195,17 @@ def main(argv=[__name__]):
     topn = itf.GetInt("-topN")
     fptype = itf.GetInt("-fprint")
 
+    start_time = time.time()
+
     print("Reading inputs")
     index_list = ReadIndex(ini)
-    act_list = read_database(ina, fptype)
+    (act_list, fp_list) = read_database(ina, fptype)
     
     nb_ka = len(act_list) - len(index_list[0])
     iteration = len(index_list)
 
     print("Ranking the Known Actives")
-    ranking_list = RankActives(act_list, index_list, fptype, topn)
+    ranking_list = RankActives(act_list, index_list, fp_list, fptype, topn)
 
     print("Ranking the decoys")
     ifs = oemolistream()
@@ -209,16 +213,28 @@ def main(argv=[__name__]):
         OEThrow.Fatal("Unable to open inputfile" )
 
     dbfp = OEFingerPrint()
+    count = 0
     for mol in ifs.GetOEMols():
+        count += 1
+        if count < 10:
+            print("Before FP : ", time.time() - start_time)
         OEMakeFP(dbfp, mol, fptype)
         mol.SetData(str(fptype), dbfp)
+        if count < 10:
+            print("After FP : ", time.time() - start_time)
 
         for i in range(iteration):
-            simval = GetSimValAgainstAC(dbfp, act_list, index_list[i], fptype)
+            if count < 10:
+                print("Before SimVal : ", time.time() - start_time)
+            simval = GetSimValAgainstAC(dbfp, fp_list, index_list[i], fptype)
+            if count < 10:
+                print("After SimVal : ", time.time() - start_time)
 
             OESetSDData(mol, "Similarity Value (Tanimoto) :", str(simval))
             OESetSDData(mol, "Trial Set :", str(i))
             OESetSDData(mol, "Known Active :",'0' )
+            if count < 10:
+                print("Before Ranking : ", time.time() - start_time)
             ranking_list[i] = (UpdateRanking(mol, simval, False, ranking_list[i], topn))
         
     print("Analysing")
