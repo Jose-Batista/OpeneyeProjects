@@ -128,9 +128,9 @@ def RankingAnalysis(ranking_list, nb_ka):
     print(results_avg)
     return results_avg
 
-def PlotResults(results, plot_output):
+def PlotResults(results_avg, plot_output):
 
-    results.plot(y = 'Average RR', label = "Average RR")
+    results_avg.plot(y = 'Average RR', label = "Average RR")
     plt.xlabel('Top Rank Molecules')
     plt.ylabel('Rate (%)')
     plt.legend( loc='best')
@@ -138,7 +138,7 @@ def PlotResults(results, plot_output):
     path = plot_output + "Average_RR_plot.svg"
     plt.savefig(path)
 
-    results.plot(y = 'Average HR', label = "Average HR")
+    results_avg.plot(y = 'Average HR', label = "Average HR")
     plt.xlabel('Top Rank Molecules')
     plt.ylabel('Rate (%)')
     plt.legend( loc='best')
@@ -149,7 +149,7 @@ def PlotResults(results, plot_output):
     #plt.show()
 
 
-def write_output(ranking_list, results, iteration, out, output_dir):
+def write_output(ranking_list, results_avg, iteration, out, output_dir):
     ofs = oemolostream()
     output_path = out
 
@@ -168,7 +168,7 @@ def write_output(ranking_list, results, iteration, out, output_dir):
             ranking_save.write(mol_data)
     ranking_save.close()
 
-    PlotResults(results, output_dir)
+    PlotResults(results_avg, output_dir)
 
 def main(argv=[__name__]):
     itf = OEInterface(InterfaceData, argv)
@@ -224,9 +224,9 @@ def main(argv=[__name__]):
             ranking_list[i] = (UpdateRanking(mol, simval, False, ranking_list[i], topn))
         
     print("Analysing")
-    results = RankingAnalysis(ranking_list, nb_ka)
+    results_avg = RankingAnalysis(ranking_list, nb_ka)
     print("Printing output")
-    write_output(ranking_list, results, iteration, out, od)
+    write_output(ranking_list, results_avg, iteration, out, od)
 
 
 InterfaceData = """
