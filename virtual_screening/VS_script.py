@@ -11,8 +11,6 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-#master version mod
-
 def read_database(database, fptype):
     ifs = oemolistream()
 
@@ -32,12 +30,12 @@ def ReadIndex(index_input):
     index = index_log.read()
     index_list = index.split('set N°')
     index_list = index_list[1:]
-    for set, random_set in enumerate(index_list):
+    for set_id, random_set in enumerate(index_list):
         random_set = random_set.split(' ')
         random_set = random_set[1:-1]
         for i, idx in enumerate(random_set):
             random_set[i] = int(idx)
-        index_list[set] = random_set
+        index_list[set_id] = random_set
 
     index_log.close()
     return index_list
@@ -82,34 +80,37 @@ def GetSimValAgainstAC(fp, act_list, baitset, fptype):
 
 def UpdateRanking(mol, tanimoto, KA, ranking, topn):
     index = len(ranking)
-    for top_mol in reversed(ranking):
-        if tanimoto > top_mol[1]:
-            index = ranking.index(top_mol) 
-        else:
-            break
+    if (index >= topn and tanimoto < ranking[index-1][1]):
+        return ranking
+    else:    
+        for top_mol in reversed(ranking):
+            if tanimoto > top_mol[1]:
+                index = ranking.index(top_mol) 
+            else:
+                break
 
-    upper = ranking[:index]
-    lower = ranking[index:]
-    ranking = upper + [(mol, tanimoto, KA)] + lower
+        upper = ranking[:index]
+        lower = ranking[index:]
+        ranking = upper + [(mol.CreateCopy(), tanimoto, KA)] + lower
 
-    i = topn - 1
-    while i < len(ranking) - 1:
-        if ranking[i][1] != ranking[i + 1][1]:
-            ranking = ranking[:i + 1]
+        i = topn - 1
+        while i < len(ranking) - 1:
+            if ranking[i][1] != ranking[i + 1][1]:
+                ranking = ranking[:i + 1]
 
-            break
-        else:
-            i += 1
+                break
+            else:
+                i += 1
 
-    return ranking
+        return ranking
 
-def RankingAnalysis(ranking, nb_ka, iteration):
+def RankingAnalysis(ranking_list, nb_ka):
     results = pd.DataFrame()
-    for i in range(iteration):
+    for ranking in ranking_list:
         set_results = pd.DataFrame(columns = ['RR', 'HR', 'Set'])
         count = 0
         count_ka = 0
-        for row, mol in enumerate(ranking[i]):
+        for row, mol in enumerate(ranking):
             count += 1
             if mol[2] == 1:
                 count_ka += 1
@@ -199,10 +200,7 @@ def main(argv=[__name__]):
     nb_ka = len(act_list) - len(index_list[0])
     iteration = len(index_list)
 
-    results = []
-
     print("Ranking the Known Actives")
-    
     ranking_list = RankActives(act_list, index_list, fptype, topn)
 
     print("Ranking the decoys")
