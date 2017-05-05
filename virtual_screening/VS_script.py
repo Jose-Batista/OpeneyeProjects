@@ -77,21 +77,26 @@ def GetSimValAgainstAC(fp, act_list, baitset, fptype):
 	return maxval
 
 def UpdateRanking(mol, idx, tanimoto, KA, ranking, topn):
-	ranking.loc[len(ranking)] = [mol, idx, tanimoto, np.NaN, KA]
-	ranking["Rank"] = ranking["Tanimoto"].rank(method = "min", ascending = 0)
-	ranking = ranking[ranking["Rank"] < topn + 1]
-	ranking = ranking.sort_values('Rank')
-	ranking = ranking.reset_index()
-	ranking = ranking.drop(['index'], axis = 1)
+    if len(ranking) >= topn and tanimoto < ranking["Tanimoto"][len(ranking - 1]:
+        return ranking
+    else:
+        ranking.loc[len(ranking)] = [mol, idx, tanimoto, np.NaN, KA]
+        ranking["Rank"] = ranking["Tanimoto"].rank(method = "min", ascending = 0)
+        ranking = ranking[ranking["Rank"] < topn + 1]
+        ranking = ranking.sort_values('Rank')
+        ranking = ranking.reset_index()
+        ranking = ranking.drop(['index'], axis = 1)
 
 	return ranking
 
-def RankingAnalysis(ranking, nb_ka):
-    results = pd.DataFrame()
-	ranking["Nb_KA"] = ranking.KA.cumsum()
-	ranking["Count"] = 1
-	ranking["RR"] = 100 * ranking.Nb_KA/nb_ka
-	ranking["HR"] = 100 * ranking.Nb_KA/ranking.Count.cumsum()
+def RankingAnalysis(ranking_list, nb_ka):
+    for ranking in ranking_list:
+        
+        results = pd.DataFrame()
+        ka_cumsum = ranking.KA.cumsum()
+        count = pd.Series(range(1, len(ranking) + 1)
+        results["RR"] = 100 * ka_cumsum/nb_ka
+        results["HR"] = 100 * ka_cumsum/count
 
 	return ranking
 
