@@ -6,9 +6,12 @@ from openeye.oegraphsim import *
 import sys
 import os
 import random
+import time
 
 import pandas as pd
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 def read_database(database, fptype):
@@ -17,13 +20,15 @@ def read_database(database, fptype):
     if not ifs.open(database):
         OEThrow.Fatal("Unable to open inputfile" )
 
-    mol_list = []
+    mol_list = list()
+    fp_list = list()
     for mol in ifs.GetOEMols():
         fp = OEFingerPrint()
         OEMakeFP(fp, mol, fptype)
+        fp_list.append(fp)
         mol.SetData(str(fptype), fp)
         mol_list.append(mol.CreateCopy())
-    return mol_list
+    return mol_list, fp_list
 
 def ReadIndex(index_input):
     index_log = open(index_input, 'r')
@@ -41,7 +46,7 @@ def ReadIndex(index_input):
     return index_list
 
 
-def RankActives(act_list, index_list, fptype, topn):
+def RankActives(act_list, index_list, fp_list, fptype, topn):
 
     ranking_list = list()
 
@@ -51,7 +56,7 @@ def RankActives(act_list, index_list, fptype, topn):
         for idx in baitset:
             while c < idx:
                 fp = act_list[c].GetData(str(fptype))
-                simval = GetSimValAgainstAC(fp, act_list, baitset, fptype)
+                simval = GetSimValAgainstAC(fp, fp_list, baitset, fptype)
                 OESetSDData(act_list[idx], "Similarity Value (Tanimoto) :", str(simval))
                 OESetSDData(act_list[idx], "Trial Set :", str(i))
                 OESetSDData(act_list[idx], "Known Active :", "1")
@@ -60,7 +65,7 @@ def RankActives(act_list, index_list, fptype, topn):
             c += 1
         while c < len(act_list):
             fp = act_list[c].GetData(str(fptype))
-            simval = GetSimValAgainstAC(fp, act_list, baitset, fptype)
+            simval = GetSimValAgainstAC(fp, fp_list, baitset, fptype)
             ranking = UpdateRanking(act_list[c], simval, True, ranking, topn)
             c += 1
 
@@ -69,11 +74,10 @@ def RankActives(act_list, index_list, fptype, topn):
 
     return ranking_list
 
-def GetSimValAgainstAC(fp, act_list, baitset, fptype):
+def GetSimValAgainstAC(fp, fp_list, baitset, fptype):
     maxval = 0
     for idx in baitset:
-        fp_act = act_list[idx].GetData(str(fptype))
-        tanimoto = OETanimoto(fp, fp_act)
+        tanimoto = OETanimoto(fp, fp_list[idx])
         if tanimoto > maxval:
             maxval = tanimoto
     return maxval
@@ -106,7 +110,7 @@ def UpdateRanking(mol, tanimoto, KA, ranking, topn):
 
 def RankingAnalysis(ranking_list, nb_ka):
     results = pd.DataFrame()
-    for ranking in ranking_list:
+    for i, ranking in enumerate(ranking_list):
         set_results = pd.DataFrame(columns = ['RR', 'HR', 'Set'])
         count = 0
         count_ka = 0
@@ -118,61 +122,46 @@ def RankingAnalysis(ranking_list, nb_ka):
             hr = 100 * count_ka/count
             set_results.loc[row] = [rr, hr, i]
         results = pd.concat([results, set_results])
-
-    results['Average RR'] = results['RR'].mean(axis=1)
-    results['Average HR'] = results['HR'].mean(axis=1)
-    #print(results)
-    return results
-
-def PlotResults(results, plot_output):
-
-    results.plot(y = 'RR', label = "RR Set ")
-    plt.xlabel('Top Rank Molecules')
-    plt.ylabel('Rate (%)')
-    plt.legend( loc='best')
-    plt.title("RR Rates")
-    path = plot_output + "RR_plot.svg"
-    plt.savefig(path)
     
-    results.plot(y = 'HR', label = "HR Set ")
+    results_avg = pd.DataFrame()
+    results_avg['Average RR'] = results.groupby(results.index)['RR'].mean()
+    results_avg['Average HR'] = results.groupby(results.index)['HR'].mean()
+
+    return results_avg
+
+def PlotResults(results_avg, plot_output, fptype):
+
+    results_avg.plot(y = 'Average RR', label = "Average RR")
     plt.xlabel('Top Rank Molecules')
     plt.ylabel('Rate (%)')
     plt.legend( loc='best')
-    plt.title("HR Rates")
-    path = plot_output + "HR_plot.svg"
-    plt.savefig(path)
-    
-    results.plot(y = 'Average RR', label = "Average RR")
-    plt.xlabel('Top Rank Molecules')
-    plt.ylabel('Rate (%)')
-    plt.legend( loc='best')
-    plt.title("Average RR Rates")
-    path = plot_output + "Average_RR_plot.svg"
+    plt.title("Average RR Rates FP" + str(fptype))
+    path = plot_output + "Average_RR_plot_FP" + str(fptype) + ".svg"
     plt.savefig(path)
 
-    results.plot(y = 'Average HR', label = "Average HR")
+    results_avg.plot(y = 'Average HR', label = "Average HR")
     plt.xlabel('Top Rank Molecules')
     plt.ylabel('Rate (%)')
     plt.legend( loc='best')
-    plt.title("Average HR Rates")
-    path = plot_output + "Average_HR_plot.svg"
+    plt.title("Average HR Rates FP" + str(fptype))
+    path = plot_output + "Average_HR_plot_FP" + str(fptype) + ".svg"
     plt.savefig(path)
     
     #plt.show()
 
 
-def write_output(ranking_list, results, iteration, out, output_dir):
+def write_output(ranking_list, results_avg, fptype, output_dir):
     ofs = oemolostream()
-    output_path = out
+    path = output_dir + "ranking_FP" + str(fptype) + ".oeb"
 
-    if not ofs.open(output_path):
+    if not ofs.open(path):
         OEThrow.Warning( "Unable to create output file")
 
     for ranking in ranking_list:
         for mol in ranking:
             OEWriteMolecule(ofs, mol[0])
 
-    path = output_dir + "ranking.txt"
+    path = output_dir + "ranking_FP" + str(fptype) + ".txt"
     ranking_save = open(path, "w")
     for i, ranking in enumerate(ranking_list):
         for mol in ranking:
@@ -180,7 +169,10 @@ def write_output(ranking_list, results, iteration, out, output_dir):
             ranking_save.write(mol_data)
     ranking_save.close()
 
-    PlotResults(results, output_dir)
+    path = output_dir + "results_FP" + str(fptype) + ".csv"
+    results_avg.to_csv(path)
+    
+    PlotResults(results_avg, output_dir, fptype)
 
 def main(argv=[__name__]):
     itf = OEInterface(InterfaceData, argv)
@@ -188,20 +180,21 @@ def main(argv=[__name__]):
     ina = itf.GetString("-in_act_database")
     ind = itf.GetString("-in_decoys")
     ini = itf.GetString("-in_index_set")
-    out = itf.GetString("-output")
     od = itf.GetString("-output_directory")
     topn = itf.GetInt("-topN")
     fptype = itf.GetInt("-fprint")
 
+    start_time = time.time()
+
     print("Reading inputs")
     index_list = ReadIndex(ini)
-    act_list = read_database(ina, fptype)
+    (act_list, fp_list) = read_database(ina, fptype)
     
     nb_ka = len(act_list) - len(index_list[0])
     iteration = len(index_list)
 
     print("Ranking the Known Actives")
-    ranking_list = RankActives(act_list, index_list, fptype, topn)
+    ranking_list = RankActives(act_list, index_list, fp_list, fptype, topn)
 
     print("Ranking the decoys")
     ifs = oemolistream()
@@ -209,22 +202,34 @@ def main(argv=[__name__]):
         OEThrow.Fatal("Unable to open inputfile" )
 
     dbfp = OEFingerPrint()
+    count = 0
     for mol in ifs.GetOEMols():
+        count += 1
+        #if count < 10:
+            #print("Before FP : ", time.time() - start_time)
         OEMakeFP(dbfp, mol, fptype)
         mol.SetData(str(fptype), dbfp)
+        #if count < 10:
+            #print("After FP : ", time.time() - start_time)
 
         for i in range(iteration):
-            simval = GetSimValAgainstAC(dbfp, act_list, index_list[i], fptype)
+            #if count < 10:
+                #print("Before SimVal : ", time.time() - start_time)
+            simval = GetSimValAgainstAC(dbfp, fp_list, index_list[i], fptype)
+            #if count < 10:
+                #print("After SimVal : ", time.time() - start_time)
 
             OESetSDData(mol, "Similarity Value (Tanimoto) :", str(simval))
             OESetSDData(mol, "Trial Set :", str(i))
             OESetSDData(mol, "Known Active :",'0' )
+            #if count < 10:
+                #print("Before Ranking : ", time.time() - start_time)
             ranking_list[i] = (UpdateRanking(mol, simval, False, ranking_list[i], topn))
         
     print("Analysing")
-    results = RankingAnalysis(ranking_list, nb_ka, iteration)
+    results_avg = RankingAnalysis(ranking_list, nb_ka)
     print("Printing output")
-    write_output(ranking_list, results, iteration, out, od)
+    write_output(ranking_list, results_avg, fptype, od)
 
 
 InterfaceData = """
@@ -252,20 +257,12 @@ InterfaceData = """
     !KEYLESS 3
 !END
 
-!PARAMETER -output
-    !ALIAS -o
-    !TYPE string
-    !BRIEF Output File
-    !REQUIRED true
-    !KEYLESS 4
-!END
-
 !PARAMETER -output_directory
     !ALIAS -od
     !TYPE string
     !BRIEF Output Directory for the plots and the ranking list
     !REQUIRED true
-    !KEYLESS 5
+    !KEYLESS 4
 !END
 
 !PARAMETER -topN
@@ -273,7 +270,7 @@ InterfaceData = """
     !TYPE int
     !BRIEF Number of top Molecules
     !REQUIRED true
-    !KEYLESS 6
+    !KEYLESS 5
 !END
 
 !PARAMETER -fprint
@@ -281,7 +278,7 @@ InterfaceData = """
     !TYPE int
     !BRIEF Fingerprint Type (101 for MACCS, 102 for Path, 103 for Lingo, 104 for Circular, 105 for Tree)
     !REQUIRED true
-    !KEYLESS 7
+    !KEYLESS 6
 !END
 
 """
