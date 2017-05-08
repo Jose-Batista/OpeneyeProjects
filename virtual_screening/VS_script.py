@@ -126,8 +126,7 @@ def RankingAnalysis(ranking_list, nb_ka):
     results_avg = pd.DataFrame()
     results_avg['Average RR'] = results.groupby(results.index)['RR'].mean()
     results_avg['Average HR'] = results.groupby(results.index)['HR'].mean()
-    
-    print(results_avg)
+
     return results_avg
 
 def PlotResults(results_avg, plot_output, fptype):
@@ -137,7 +136,7 @@ def PlotResults(results_avg, plot_output, fptype):
     plt.ylabel('Rate (%)')
     plt.legend( loc='best')
     plt.title("Average RR Rates FP" + str(fptype))
-    path = plot_output + "Average_RR_plot.svg"
+    path = plot_output + "Average_RR_plot_FP" + str(fptype) + ".svg"
     plt.savefig(path)
 
     results_avg.plot(y = 'Average HR', label = "Average HR")
@@ -145,7 +144,7 @@ def PlotResults(results_avg, plot_output, fptype):
     plt.ylabel('Rate (%)')
     plt.legend( loc='best')
     plt.title("Average HR Rates FP" + str(fptype))
-    path = plot_output + "Average_HR_plot.svg"
+    path = plot_output + "Average_HR_plot_FP" + str(fptype) + ".svg"
     plt.savefig(path)
     
     #plt.show()
@@ -162,6 +161,9 @@ def write_output(ranking_list, results_avg, fptype, out, output_dir):
         for mol in ranking:
             OEWriteMolecule(ofs, mol[0])
 
+    path = output_dir + "results_FP" + str(fptype) + ".csv"
+    results_avg.to_csv(path)
+    
     path = output_dir + "ranking.txt"
     ranking_save = open(path, "w")
     for i, ranking in enumerate(ranking_list):
@@ -204,24 +206,24 @@ def main(argv=[__name__]):
     count = 0
     for mol in ifs.GetOEMols():
         count += 1
-        if count < 10:
+        #if count < 10:
             #print("Before FP : ", time.time() - start_time)
         OEMakeFP(dbfp, mol, fptype)
         mol.SetData(str(fptype), dbfp)
-        if count < 10:
+        #if count < 10:
             #print("After FP : ", time.time() - start_time)
 
         for i in range(iteration):
-            if count < 10:
+            #if count < 10:
                 #print("Before SimVal : ", time.time() - start_time)
             simval = GetSimValAgainstAC(dbfp, fp_list, index_list[i], fptype)
-            if count < 10:
+            #if count < 10:
                 #print("After SimVal : ", time.time() - start_time)
 
             OESetSDData(mol, "Similarity Value (Tanimoto) :", str(simval))
             OESetSDData(mol, "Trial Set :", str(i))
             OESetSDData(mol, "Known Active :",'0' )
-            if count < 10:
+            #if count < 10:
                 #print("Before Ranking : ", time.time() - start_time)
             ranking_list[i] = (UpdateRanking(mol, simval, False, ranking_list[i], topn))
         
