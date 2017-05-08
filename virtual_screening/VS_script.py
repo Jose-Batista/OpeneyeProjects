@@ -150,21 +150,18 @@ def PlotResults(results_avg, plot_output, fptype):
     #plt.show()
 
 
-def write_output(ranking_list, results_avg, fptype, out, output_dir):
+def write_output(ranking_list, results_avg, fptype, output_dir):
     ofs = oemolostream()
-    output_path = out
+    path = output_dir + "ranking_FP" + str(fptype) + ".oeb"
 
-    if not ofs.open(output_path):
+    if not ofs.open(path):
         OEThrow.Warning( "Unable to create output file")
 
     for ranking in ranking_list:
         for mol in ranking:
             OEWriteMolecule(ofs, mol[0])
 
-    path = output_dir + "results_FP" + str(fptype) + ".csv"
-    results_avg.to_csv(path)
-    
-    path = output_dir + "ranking.txt"
+    path = output_dir + "ranking_FP" + str(fptype) + ".txt"
     ranking_save = open(path, "w")
     for i, ranking in enumerate(ranking_list):
         for mol in ranking:
@@ -172,6 +169,9 @@ def write_output(ranking_list, results_avg, fptype, out, output_dir):
             ranking_save.write(mol_data)
     ranking_save.close()
 
+    path = output_dir + "results_FP" + str(fptype) + ".csv"
+    results_avg.to_csv(path)
+    
     PlotResults(results_avg, output_dir, fptype)
 
 def main(argv=[__name__]):
@@ -180,7 +180,6 @@ def main(argv=[__name__]):
     ina = itf.GetString("-in_act_database")
     ind = itf.GetString("-in_decoys")
     ini = itf.GetString("-in_index_set")
-    out = itf.GetString("-output")
     od = itf.GetString("-output_directory")
     topn = itf.GetInt("-topN")
     fptype = itf.GetInt("-fprint")
@@ -230,7 +229,7 @@ def main(argv=[__name__]):
     print("Analysing")
     results_avg = RankingAnalysis(ranking_list, nb_ka)
     print("Printing output")
-    write_output(ranking_list, results_avg, fptype, out, od)
+    write_output(ranking_list, results_avg, fptype, od)
 
 
 InterfaceData = """
@@ -258,20 +257,12 @@ InterfaceData = """
     !KEYLESS 3
 !END
 
-!PARAMETER -output
-    !ALIAS -o
-    !TYPE string
-    !BRIEF Output File
-    !REQUIRED true
-    !KEYLESS 4
-!END
-
 !PARAMETER -output_directory
     !ALIAS -od
     !TYPE string
     !BRIEF Output Directory for the plots and the ranking list
     !REQUIRED true
-    !KEYLESS 5
+    !KEYLESS 4
 !END
 
 !PARAMETER -topN
@@ -279,7 +270,7 @@ InterfaceData = """
     !TYPE int
     !BRIEF Number of top Molecules
     !REQUIRED true
-    !KEYLESS 6
+    !KEYLESS 5
 !END
 
 !PARAMETER -fprint
@@ -287,7 +278,7 @@ InterfaceData = """
     !TYPE int
     !BRIEF Fingerprint Type (101 for MACCS, 102 for Path, 103 for Lingo, 104 for Circular, 105 for Tree)
     !REQUIRED true
-    !KEYLESS 7
+    !KEYLESS 6
 !END
 
 """
