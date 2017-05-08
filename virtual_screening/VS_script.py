@@ -10,6 +10,8 @@ import time
 
 import pandas as pd
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 def read_database(database, fptype):
@@ -203,24 +205,24 @@ def main(argv=[__name__]):
     for mol in ifs.GetOEMols():
         count += 1
         if count < 10:
-            print("Before FP : ", time.time() - start_time)
+            #print("Before FP : ", time.time() - start_time)
         OEMakeFP(dbfp, mol, fptype)
         mol.SetData(str(fptype), dbfp)
         if count < 10:
-            print("After FP : ", time.time() - start_time)
+            #print("After FP : ", time.time() - start_time)
 
         for i in range(iteration):
             if count < 10:
-                print("Before SimVal : ", time.time() - start_time)
+                #print("Before SimVal : ", time.time() - start_time)
             simval = GetSimValAgainstAC(dbfp, fp_list, index_list[i], fptype)
             if count < 10:
-                print("After SimVal : ", time.time() - start_time)
+                #print("After SimVal : ", time.time() - start_time)
 
             OESetSDData(mol, "Similarity Value (Tanimoto) :", str(simval))
             OESetSDData(mol, "Trial Set :", str(i))
             OESetSDData(mol, "Known Active :",'0' )
             if count < 10:
-                print("Before Ranking : ", time.time() - start_time)
+                #print("Before Ranking : ", time.time() - start_time)
             ranking_list[i] = (UpdateRanking(mol, simval, False, ranking_list[i], topn))
         
     print("Analysing")
