@@ -23,14 +23,9 @@ def read_database(database, fptype):
         OEThrow.Fatal("Unable to open inputfile" )
 
     mol_list = list()
-    fp_list = list()
     for mol in ifs.GetOEMols():
-        fp = OEFingerPrint()
-        OEMakeFP(fp, mol, fptype)
-        fp_list.append(fp)
-        mol.SetData(str(fptype), fp)
         mol_list.append(mol.CreateCopy())
-    return mol_list, fp_list
+    return mol_list
 
 def ReadIndex(index_input):
     index_log = open(index_input, 'r')
@@ -47,47 +42,71 @@ def ReadIndex(index_input):
     index_log.close()
     return index_list
 
+
 def CreateRankings(act_list, index_list, baseurl, data):
     ranking_list = list()
     for baitset in index_list:
         ranking = list()
         for idx in baitset:
-            url = "%s/%s/hitlist?smiles=%s" %(baseurl, data['databases'][0], OEMolToSmiles(act_list[idx]))
+            print(idx)
+            url = "%s/%s/hitlist?smiles=%s&oformat=csv" %(baseurl, data['databases'][0], OEMolToSmiles(act_list[idx]))
             response = requests.get( url )
-            hitlist = response.json()
+            print(response.content)
+            hitlist = response.content.decode().split('\n')
+            hitlist = hitlist[1:-1]
             cur_rank = list()
             for mol in hitlist:
-                cur_rank.append((mol, res[mol], False))
-                cur_rank = sorted(cur_res, key=lambda mol: mol[1])
-            ranking = MergeRankings(ranking, cur_rank)
+                cur_mol = mol.split(',')
+                print(cur_mol[0], cur_mol[1], cur_mol[2])
+                cur_rank.append((cur_mol[0], cur_mol[1], float(cur_mol[2]), False))
+            if len(ranking) == 0:
+                ranking = cur_rank
+            else:
+                ranking = MergeRankings(ranking, cur_rank)
         ranking_list.append(ranking)
     return ranking_list
 
 def MergeRankings(ranking_1, ranking_2):
+    merged_list = list()
     i = 0
     j = 0
     while i < len(ranking_1):
-        while j < len(ranking_2) and ranking_2[1]:
+        while j < len(ranking_2) and ranking_2[j][2] > ranking_1[i][2]:
+            merged_list.append(ranking_2[j])
+            j += 1
+        merged_list.append(ranking_1[i])  
+        i += 1
 
+    while j < len(ranking_2):
+        merged_list.append(ranking_2[j])
+        j += 1
 
-def InsertKnownActives(ranking_list, act_list, index_list, baseurl):
+    return merged_list
+
+def InsertKnownActives(ranking_list, act_list, index_list, baseurl, data):
     for i, baitset in enumerate(index_list):
         c = 0
         for idx in baitset:
             while c < idx:
-                url = "%s/%s/neighbor?smiles=%s" %(baseurl, data['databases'][0], OEMolToSmiles(act_list[c]))
+                url = "%s/%s/neighbor?smiles=%s&oformat=csv" %(baseurl, data['databases'][0], OEMolToSmiles(act_list[c]))
                 response = requests.get( url )
-                res = response.json()
-                cur_res = 
-                ranking_list[i] = MergeRankings(ranking, res)
+                print(response.content)
+                neighbor = response.content.decode().split('\n')
+                neighbor = neighbor[1:-1]
+                neighbor = neighbor[0].split(',')
+                known_act = list((OEMolToSmiles(act_list[c]), OEMol.GetTitle(), float(neighbor[2]), True )
+                ranking_list[i] = MergeRankings(ranking_list[i], known_act)
                 c += 1
             c += 1
         while c < len(act_list):
-            url = "%s/%s/neighbor?smiles=%s" %(baseurl, data['databases'][0], OEMolToSmiles(act_list[c]))
+            url = "%s/%s/neighbor?smiles=%s&oformat=csv" %(baseurl, data['databases'][0], OEMolToSmiles(act_list[c]))
             response = requests.get( url )
-            res = response.json()
-            cur_res = 
-            ranking_list[i] = MergeRankings(ranking, res)
+            print(response.content)
+            neighbor = response.content.decode().split('\n')
+            neighbor = neighbor[1:-1]
+            neighbor = neighbor[0].split(',')
+            known_act = list((OEMolToSmiles(act_list[c]), OEMol.GetTitle(), float(neighbor[2]), True )
+            ranking_list[i] = MergeRankings(ranking_list[i], known_act)
             c += 1
 
     return ranking_list
@@ -173,7 +192,7 @@ def main(argv=[__name__]):
 
     print("Reading inputs")
     index_list = ReadIndex(ini)
-    (act_list, fp_list) = read_database(ina, fptype)
+    act_list = read_database(ina)
     
     nb_ka = len(act_list) - len(index_list[0])
 
