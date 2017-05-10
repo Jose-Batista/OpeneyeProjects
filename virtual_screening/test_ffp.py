@@ -15,6 +15,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 import json,requests
+import urllib.parse as parse
 
 def CreateRankings(act_list, index_list, baseurl, data, topn):
     ranking_list = list()
@@ -22,16 +23,20 @@ def CreateRankings(act_list, index_list, baseurl, data, topn):
         ranking = list()
         for idx in baitset:
             print(idx)
-            url = "%s/%s/hitlist?smiles=%s&oformat=csv" %(baseurl, data['databases'][0], OEMolToSmiles(act_list[idx]))
+            smiles = OEMolToSmiles(act_list[idx])
+            #safe_smiles = parse.quote(smiles, safe='~@#$&()*!+=:;,.?/\'')
+            safe_smiles = parse.quote(smiles)
+            url = "%s/%s/hitlist?smiles=%s&oformat=csv" %(baseurl, data['databases'][0], safe_smiles) 
+            print(url)
             response = requests.get( url )
-            print(response.content)
             hitlist = response.content.decode().split('\n')
-            hitlist = hitlist[1:-1]
+            print(type(hitlist))
+            hitlist.pop(0)
+            hitlist.pop()
             cur_rank = list()
             for mol in hitlist:
                 cur_mol = mol.split(',')
-                print(cur_mol[0], cur_mol[1], cur_mol[2])
-                cur_rank.append((cur_mol[0], cur_mol[1], float(cur_mol[2]), False))
+                cur_rank.append((cur_mol[0], cur_mol[1], float(cur_mol[5]), False))
             if len(ranking) == 0:
                 ranking = cur_rank
             else:
@@ -44,32 +49,46 @@ def MergeRankings(ranking_1, ranking_2, topn):
     i = 0
     j = 0
     count = 0
+    id_set = set()
     while i < len(ranking_1):
         while j < len(ranking_2) and ranking_2[j][2] > ranking_1[i][2]:
-            if count < topn or ranking_2[j][2] == merged_list[count-1][2]:
+            if ranking_2[j][1] not in id_set: 
+                if count < topn or ranking_2[j][2] == merged_list[count-1][2]:
+                    merged_list.append(ranking_2[j])
+                    count += 1
+                    id_set.add(ranking_2[j][1])
+                    j += 1
+                else:
+                    break
+            else:
+                j += 1
+
+        if ranking_1[i][1] not in id_set: 
+            if ranking_1[i] not in id_set and (count < topn or ranking_1[i][2] == merged_list[count-1][2]):
+                merged_list.append(ranking_1[i])  
+                count += 1
+                id_set.add(ranking_1[i][1])
+                i += 1
+            else:
+                break
+        else:
+            i += 1
+
+    while j < len(ranking_2):
+        if ranking_2[j][1] not in id_set: 
+            if ranking_2[j] not in id_set and (count < topn or ranking_2[j][2] == merged_list[count-1][2]):
                 merged_list.append(ranking_2[j])
                 count += 1
+                id_set.add(ranking_2[j][1])
                 j += 1
             else:
                 break
-        if count < topn or ranking_2[j][2] == merged_list[count-1][2]:
-            merged_list.append(ranking_1[i])  
-            count += 1
+        else:
             i += 1
-        else:
-            break
-
-    while j < len(ranking_2):
-        if count < topn or ranking_2[j][2] == merged_list[count-1][2]:
-            merged_list.append(ranking_2[j])
-            count += 1
-            j += 1
-        else:
-            break
 
     return merged_list
 
-baseurl = "http://130.180.63.34:8089"
+baseurl = "http://10.0.1.22:8069"
 response = requests.get( baseurl )
 data = response.json()
 
@@ -79,11 +98,11 @@ index_list = [[0,1,2], [0,3,5], [0,2,4]]
 
 act_list = list()
 mol = OEMol()
-OESmilesToMol(mol, "c1cccc1c")
+OESmilesToMol(mol, "N#N")
 act_list.append(mol.CreateCopy())
 
 mol = OEMol()
-OESmilesToMol(mol, "C1CCCC1C")
+OESmilesToMol(mol, "[OH3+]")
 act_list.append(mol.CreateCopy())
 
 mol = OEMol()

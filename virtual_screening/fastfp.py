@@ -15,6 +15,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 import json,requests
+import urllib.parse as parse
 
 def read_database(database, fptype):
     ifs = oemolistream()
@@ -43,43 +44,70 @@ def ReadIndex(index_input):
     return index_list
 
 
-def CreateRankings(act_list, index_list, baseurl, data):
+def CreateRankings(act_list, index_list, baseurl, data, topn):
     ranking_list = list()
     for baitset in index_list:
         ranking = list()
         for idx in baitset:
-            print(idx)
-            url = "%s/%s/hitlist?smiles=%s&oformat=csv" %(baseurl, data['databases'][0], OEMolToSmiles(act_list[idx]))
+            smiles = OEMolToSmiles(act_list[idx])
+            safe_smiles = parse.quote(smiles)
+            url = "%s/%s/hitlist?smiles=%s&oformat=csv" %(baseurl, data['databases'][0], safe_smiles) 
             response = requests.get( url )
-            print(response.content)
             hitlist = response.content.decode().split('\n')
-            hitlist = hitlist[1:-1]
+            hitlist.pop(0)
+            hitlist.pop()
             cur_rank = list()
             for mol in hitlist:
                 cur_mol = mol.split(',')
-                print(cur_mol[0], cur_mol[1], cur_mol[2])
-                cur_rank.append((cur_mol[0], cur_mol[1], float(cur_mol[2]), False))
+                cur_rank.append((cur_mol[0], cur_mol[1], float(cur_mol[5]), False))
             if len(ranking) == 0:
                 ranking = cur_rank
             else:
-                ranking = MergeRankings(ranking, cur_rank)
+                ranking = MergeRankings(ranking, cur_rank, topn)
         ranking_list.append(ranking)
     return ranking_list
 
-def MergeRankings(ranking_1, ranking_2):
+def MergeRankings(ranking_1, ranking_2, topn):
     merged_list = list()
     i = 0
     j = 0
+    count = 0
+    id_set = set()
     while i < len(ranking_1):
         while j < len(ranking_2) and ranking_2[j][2] > ranking_1[i][2]:
-            merged_list.append(ranking_2[j])
-            j += 1
-        merged_list.append(ranking_1[i])  
-        i += 1
+            if ranking_2[j][1] not in id_set: 
+                if count < topn or ranking_2[j][2] == merged_list[count-1][2]:
+                    merged_list.append(ranking_2[j])
+                    count += 1
+                    id_set.add(ranking_2[j][1])
+                    j += 1
+                else:
+                    break
+            else:
+                j += 1
+
+        if ranking_1[i][1] not in id_set: 
+            if ranking_1[i] not in id_set and (count < topn or ranking_1[i][2] == merged_list[count-1][2]):
+                merged_list.append(ranking_1[i])  
+                count += 1
+                id_set.add(ranking_1[i][1])
+                i += 1
+            else:
+                break
+        else:
+            i += 1
 
     while j < len(ranking_2):
-        merged_list.append(ranking_2[j])
-        j += 1
+        if ranking_2[j][1] not in id_set: 
+            if ranking_2[j] not in id_set and (count < topn or ranking_2[j][2] == merged_list[count-1][2]):
+                merged_list.append(ranking_2[j])
+                count += 1
+                id_set.add(ranking_2[j][1])
+                j += 1
+            else:
+                break
+        else:
+            i += 1
 
     return merged_list
 
@@ -88,26 +116,30 @@ def InsertKnownActives(ranking_list, act_list, index_list, baseurl, data):
         c = 0
         for idx in baitset:
             while c < idx:
-                url = "%s/%s/neighbor?smiles=%s&oformat=csv" %(baseurl, data['databases'][0], OEMolToSmiles(act_list[c]))
+                smiles = OEMolToSmiles(act_list[c])
+                safe_smiles = parse.quote(smiles)
+                url = "%s/%s/neighbor?smiles=%s&oformat=csv" %(baseurl, data['databases'][0], safe_smiles)
                 response = requests.get( url )
                 print(response.content)
                 neighbor = response.content.decode().split('\n')
-                neighbor = neighbor[1:-1]
+                neighbor.pop(0)
+                neighbor.pop()
                 neighbor = neighbor[0].split(',')
-                known_act = list((OEMolToSmiles(act_list[c]), OEMol.GetTitle(), float(neighbor[2]), True )
-                ranking_list[i] = MergeRankings(ranking_list[i], known_act)
+                known_act = list((OEMolToSmiles(act_list[c]), OEMol.GetTitle(), float(neighbor[5]), True )
+                ranking_list[i] = MergeRankings(ranking_list[i], known_act, topn)
                 c += 1
             c += 1
         while c < len(act_list):
-            url = "%s/%s/neighbor?smiles=%s&oformat=csv" %(baseurl, data['databases'][0], OEMolToSmiles(act_list[c]))
+            smiles = OEMolToSmiles(act_list[c])
+            safe_smiles = parse.quote(smiles)
+            url = "%s/%s/neighbor?smiles=%s&oformat=csv" %(baseurl, data['databases'][0], safe_smiles)
             response = requests.get( url )
             print(response.content)
             neighbor = response.content.decode().split('\n')
-            neighbor = neighbor[1:-1]
-            neighbor = neighbor[0].split(',')
-            known_act = list((OEMolToSmiles(act_list[c]), OEMol.GetTitle(), float(neighbor[2]), True )
-            ranking_list[i] = MergeRankings(ranking_list[i], known_act)
-            c += 1
+            neighbor.pop(0)
+            neighbor.pop()
+            known_act = list((OEMolToSmiles(act_list[c]), OEMol.GetTitle(), float(neighbor[5]), True )
+            ranking_list[i] = MergeRankings(ranking_list[i], known_act, topn)
 
     return ranking_list
 
@@ -119,7 +151,7 @@ def RankingAnalysis(ranking_list, nb_ka):
         count_ka = 0
         for row, mol in enumerate(ranking):
             count += 1
-            if mol[2] == 1:
+            if mol[3] == 1:
                 count_ka += 1
             rr = 100 * count_ka/nb_ka
             hr = 100 * count_ka/count
@@ -196,8 +228,8 @@ def main(argv=[__name__]):
     
     nb_ka = len(act_list) - len(index_list[0])
 
-    ranking_list = CreateRanking(act_list, index_list, baseurl, data)
-    ranking_list = InsertKnownActives(ranking_list, act_list, index_list, baseurl)
+    ranking_list = CreateRanking(act_list, index_list, baseurl, data, topn)
+    ranking_list = InsertKnownActives(ranking_list, act_list, index_list, baseurl, topn)
 
     print("Analysing")
     results_avg = RankingAnalysis(ranking_list, nb_ka)
