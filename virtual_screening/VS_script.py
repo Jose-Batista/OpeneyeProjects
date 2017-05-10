@@ -164,8 +164,9 @@ def write_output(ranking_list, results_avg, fptype, output_dir):
     path = output_dir + "ranking_FP" + str(fptype) + ".txt"
     ranking_save = open(path, "w")
     for i, ranking in enumerate(ranking_list):
+        ranking_save.write("Set n°" + i + "\n")
         for mol in ranking:
-            mol_data = str(i) + " " + mol[0].GetTitle() + " " + str(mol[1])
+            mol_data = str(i) + " " + mol[0].GetTitle() + " " + str(mol[1]) + " " + str(mol[2]) + "\n"
             ranking_save.write(mol_data)
     ranking_save.close()
 
