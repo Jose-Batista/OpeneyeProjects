@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 import json,requests
 import urllib.parse as parse
 
-def read_database(database, fptype):
+def read_database(database):
     ifs = oemolistream()
 
     if not ifs.open(database):
@@ -47,6 +47,7 @@ def ReadIndex(index_input):
 def CreateRankings(act_list, index_list, baseurl, data, topn):
     ranking_list = list()
     for baitset in index_list:
+        print("New Set")
         ranking = list()
         for idx in baitset:
             smiles = OEMolToSmiles(act_list[idx])
@@ -107,39 +108,36 @@ def MergeRankings(ranking_1, ranking_2, topn):
             else:
                 break
         else:
-            i += 1
+            j += 1
 
     return merged_list
 
-def InsertKnownActives(ranking_list, act_list, index_list, baseurl, data):
+def InsertKnownActives(ranking_list, act_list, index_list, baseurl, data, topn):
     for i, baitset in enumerate(index_list):
+        print("Set ", i)
         c = 0
         for idx in baitset:
             while c < idx:
                 smiles = OEMolToSmiles(act_list[c])
                 safe_smiles = parse.quote(smiles)
-                url = "%s/%s/neighbor?smiles=%s&oformat=csv" %(baseurl, data['databases'][0], safe_smiles)
+                url = "%s/%s/neighbor?smiles=%s" %(baseurl, data['databases'][0], safe_smiles)
                 response = requests.get( url )
-                print(response.content)
-                neighbor = response.content.decode().split('\n')
-                neighbor.pop(0)
-                neighbor.pop()
-                neighbor = neighbor[0].split(',')
-                known_act = list((OEMolToSmiles(act_list[c]), OEMol.GetTitle(), float(neighbor[5]), True )
+                neighbor = response.json()
+                known_act = list()
+                known_act.append((OEMolToSmiles(act_list[c]), act_list[c].GetTitle(), float(neighbor["score"]), True ))
                 ranking_list[i] = MergeRankings(ranking_list[i], known_act, topn)
                 c += 1
             c += 1
         while c < len(act_list):
             smiles = OEMolToSmiles(act_list[c])
             safe_smiles = parse.quote(smiles)
-            url = "%s/%s/neighbor?smiles=%s&oformat=csv" %(baseurl, data['databases'][0], safe_smiles)
+            url = "%s/%s/neighbor?smiles=%s" %(baseurl, data['databases'][0], safe_smiles)
             response = requests.get( url )
-            print(response.content)
-            neighbor = response.content.decode().split('\n')
-            neighbor.pop(0)
-            neighbor.pop()
-            known_act = list((OEMolToSmiles(act_list[c]), OEMol.GetTitle(), float(neighbor[5]), True )
+            neighbor = response.json()
+            known_act = list()
+            known_act.append((OEMolToSmiles(act_list[c]), act_list[c].GetTitle(), float(neighbor["score"]), True ))
             ranking_list[i] = MergeRankings(ranking_list[i], known_act, topn)
+            c += 1
 
     return ranking_list
 
@@ -186,21 +184,22 @@ def PlotResults(results_avg, plot_output, fptype):
 
 
 def write_output(ranking_list, results_avg, fptype, output_dir):
-    ofs = oemolostream()
-    path = output_dir + "ranking_FP" + str(fptype) + ".oeb"
+    #ofs = oemolostream()
+    #path = output_dir + "ranking_FP" + str(fptype) + ".oeb"
 
-    if not ofs.open(path):
-        OEThrow.Warning( "Unable to create output file")
+    #if not ofs.open(path):
+    #    OEThrow.Warning( "Unable to create output file")
 
-    for ranking in ranking_list:
-        for mol in ranking:
-            OEWriteMolecule(ofs, mol[0])
+    #for ranking in ranking_list:
+    #    for mol in ranking:
+    #        OEWriteMolecule(ofs, mol[0])
 
     path = output_dir + "ranking_FP" + str(fptype) + ".txt"
     ranking_save = open(path, "w")
     for i, ranking in enumerate(ranking_list):
+        ranking_save.write("\n" + "Set n°" + str(i) + "\n")
         for mol in ranking:
-            mol_data = str(i) + " " + mol[0].GetTitle() + " " + str(mol[1])
+            mol_data = str(i) + " " + mol[1] + " " + str(mol[2]) + " " + str(mol[3]) +  "\n"
             ranking_save.write(mol_data)
     ranking_save.close()
 
@@ -218,7 +217,7 @@ def main(argv=[__name__]):
     topn = itf.GetInt("-topN")
     fptype = itf.GetInt("-fprint")
 
-    baseurl = "http://130.180.63.34:8089"
+    baseurl = "http://10.0.1.22:8069"
     response = requests.get( baseurl )
     data = response.json()
 
@@ -227,9 +226,11 @@ def main(argv=[__name__]):
     act_list = read_database(ina)
     
     nb_ka = len(act_list) - len(index_list[0])
-
-    ranking_list = CreateRanking(act_list, index_list, baseurl, data, topn)
-    ranking_list = InsertKnownActives(ranking_list, act_list, index_list, baseurl, topn)
+    
+    print("Create Rankings")
+    ranking_list = CreateRankings(act_list, index_list, baseurl, data, topn)
+    print("Insert Known Actives")
+    ranking_list = InsertKnownActives(ranking_list, act_list, index_list, baseurl, data, topn)
 
     print("Analysing")
     results_avg = RankingAnalysis(ranking_list, nb_ka)
