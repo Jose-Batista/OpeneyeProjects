@@ -52,11 +52,12 @@ def CreateRankings(act_list, index_list, baseurl, data, topn):
         for idx in baitset:
             smiles = OEMolToSmiles(act_list[idx])
             safe_smiles = parse.quote(smiles)
-            url = "%s/%s/hitlist?smiles=%s&oformat=csv" %(baseurl, data['databases'][0], safe_smiles) 
+            url = "%s/%s/hitlist?smiles=%s&oformat=csv&maxhits=%d" %(baseurl, data['databases'][0], safe_smiles, topn) 
             response = requests.get( url )
             hitlist = response.content.decode().split('\n')
             hitlist.pop(0)
             hitlist.pop()
+            print(len(hitlist))
             cur_rank = list()
             for mol in hitlist:
                 cur_mol = mol.split(',')
@@ -122,6 +123,7 @@ def InsertKnownActives(ranking_list, act_list, index_list, baseurl, data, topn):
                 safe_smiles = parse.quote(smiles)
                 url = "%s/%s/neighbor?smiles=%s" %(baseurl, data['databases'][0], safe_smiles)
                 response = requests.get( url )
+                print(response.content)
                 neighbor = response.json()
                 known_act = list()
                 known_act.append((OEMolToSmiles(act_list[c]), act_list[c].GetTitle(), float(neighbor["score"]), True ))
