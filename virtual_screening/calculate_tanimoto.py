@@ -5,6 +5,9 @@ from openeye.oechem import *
 from openeye.oegraphsim import *
 import sys
 
+import json,requests
+import urllib.parse as parse
+
 def read_db(input_query, fptype):
     ifs = oemolistream()
 
@@ -34,11 +37,28 @@ def calculate_tanimoto(db_list, mol, fptype):
     return tanimoto_list
 
 def write_output(mol, tanimoto_list, out):
-    tanimoto_results = open(out, "w")
+    tanimoto_results = open(out, "a")
     tanimoto_results.write("Molecule : %s   Smiles : %s\n" %(mol[0].GetTitle(), OEMolToSmiles(mol[0])))
     for tanimoto in tanimoto_list:
         tanimoto_results.write("%s, %s Tanimoto value : %.4f\n" %(tanimoto[0], tanimoto[1], tanimoto[2]))
-    tanimoto_results:close()
+    tanimoto_results.write("\n")
+    tanimoto_results.close()
+
+def request_tanimoto(mol, baseurl, data):
+    ranking = list()
+    smiles = OEMolToSmiles(mol[0])
+    safe_smiles = parse.quote(smiles)
+    url = "%s/%s/hitlist?smiles=%s&oformat=csv" %(baseurl, data['databases'][0], safe_smiles) 
+    response = requests.get( url )
+    hitlist = response.content.decode().split('\n')
+    hitlist.pop(0)
+    hitlist.pop()
+    for mol in hitlist:
+        cur_mol = mol.split(',')
+        ranking.append((cur_mol[1], cur_mol[0], float(cur_mol[4])))
+        print((cur_mol[1], cur_mol[0], float(cur_mol[4])))
+    return ranking
+
 
 def main(argv=[__name__]):
     itf = OEInterface(InterfaceData, argv)
@@ -51,6 +71,13 @@ def main(argv=[__name__]):
     db_list = read_db(ind, fptype)
     mol = read_db(inm, fptype)
     tanimoto_list = calculate_tanimoto(db_list, mol, fptype)
+    write_output(mol, tanimoto_list, out)
+
+    baseurl = "http://10.0.1.22:8069"
+    response = requests.get( baseurl )
+    data = response.json()
+
+    tanimoto_list = request_tanimoto(mol, baseurl, data)
     write_output(mol, tanimoto_list, out)
 
 InterfaceData = """
@@ -75,7 +102,7 @@ InterfaceData = """
   !ALIAS -o
   !TYPE string
   !BRIEF Output File
-  !REQUIRED false
+  !REQUIRED true
   !KEYLESS 3
 !END
 
