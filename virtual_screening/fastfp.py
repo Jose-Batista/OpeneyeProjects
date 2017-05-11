@@ -148,13 +148,13 @@ def GetSimValAgainstAC(dbfp, fp_list, baitset):
     return maxval
 
 def UpdateRanking(mol, tanimoto, KA, ranking, topn):
-    index = len(ranking)
-    if (index >= topn and tanimoto < ranking[index-1][2]):
+    index = 0
+    if len(ranking) >= topn and tanimoto < ranking[len(ranking)-1][2]:
         return ranking
     else:    
-        for top_mol in reversed(ranking):
-            if tanimoto > top_mol[2]:
-                index = ranking.index(top_mol) 
+        for top_mol in ranking:
+            if tanimoto < top_mol[2]:
+                index = ranking.index(top_mol) + 1
             else:
                 break
 
