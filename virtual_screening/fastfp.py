@@ -57,7 +57,6 @@ def CreateRankings(act_list, index_list, baseurl, data, topn):
             hitlist = response.content.decode().split('\n')
             hitlist.pop(0)
             hitlist.pop()
-            print(len(hitlist))
             cur_rank = list()
             for mol in hitlist:
                 cur_mol = mol.split(',')
