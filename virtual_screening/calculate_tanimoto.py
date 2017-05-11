@@ -14,26 +14,29 @@ def read_db(input_query, fptype):
     if not ifs.open(input_query):
         OEThrow.Fatal("Unable to open inputfile" )
 
+    fp_list = list()
     mol_list = []
     for mol in ifs.GetOEGraphMols():
         fp = OEFingerPrint()
         OEMakeFP(fp, mol, fptype)
-        mol.SetData(str(fptype), fp)
         mol_list.append(mol.CreateCopy())
-    return mol_list
+        fp_list.append(fp)
+    return mol_list, fp_list
 
 
-def calculate_tanimoto(db_list, mol, fptype):
-    fp = mol[0].GetData(str(fptype))
+def calculate_tanimoto(dbfp_list, db_list, fp, mol, fptype):
+    fp = fp[0]
     print("Molecule : %s   Smiles : %s" %(mol[0].GetTitle(), OEMolToSmiles(mol[0]))) 
     print("Results")
     tanimoto_list = list()
-    for dbmol in db_list:
-        dbfp = dbmol.GetData(str(fptype))
+    for i, dbmol in enumerate(db_list):
+        dbfp = dbfp_list[i]
         tanimoto = OETanimoto(fp, dbfp)
         print("%s, %s  Tanimoto value : %4f" %(dbmol.GetTitle(), OEMolToSmiles(dbmol), tanimoto))
         tanimoto_list.append((dbmol.GetTitle(), OEMolToSmiles(dbmol), tanimoto))
         tanimoto_list = sorted(tanimoto_list, reverse = True, key = lambda mol:mol[2])
+        if len(tanimoto_list) > 100:
+            tanimoto.pop()
     return tanimoto_list
 
 def write_output(mol, tanimoto_list, out):
@@ -68,9 +71,9 @@ def main(argv=[__name__]):
     out = itf.GetString("-output")
     fptype = itf.GetInt("-fprint")
 
-    db_list = read_db(ind, fptype)
-    mol = read_db(inm, fptype)
-    tanimoto_list = calculate_tanimoto(db_list, mol, fptype)
+    (db_list, dbfp_list) = read_db(ind, fptype)
+    (mol, fp) = read_db(inm, fptype)
+    tanimoto_list = calculate_tanimoto(dbfp_list, db_list, fp, mol, fptype)
     write_output(mol, tanimoto_list, out)
 
     baseurl = "http://10.0.1.22:8069"

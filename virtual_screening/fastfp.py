@@ -17,16 +17,20 @@ import matplotlib.pyplot as plt
 import json,requests
 import urllib.parse as parse
 
-def read_database(database):
+def read_database(database, fptype):
     ifs = oemolistream()
 
     if not ifs.open(database):
         OEThrow.Fatal("Unable to open inputfile" )
 
     mol_list = list()
+    fp_list = list()
     for mol in ifs.GetOEMols():
+        fp = OEFingerPrint()
+        OEMakeFP(fp, mol, fptype)
         mol_list.append(mol.CreateCopy())
-    return mol_list
+        fp_list.append(fp)
+    return mol_list, fp_list
 
 def ReadIndex(index_input):
     index_log = open(index_input, 'r')
@@ -112,35 +116,62 @@ def MergeRankings(ranking_1, ranking_2, topn):
 
     return merged_list
 
-def InsertKnownActives(ranking_list, act_list, index_list, baseurl, data, topn):
+def InsertKnownActives(ranking_list, act_list, fp_list, index_list, baseurl, data, topn, fptype):
     for i, baitset in enumerate(index_list):
         print("Set ", i)
         c = 0
         for idx in baitset:
             while c < idx:
-                smiles = OEMolToSmiles(act_list[c])
-                safe_smiles = parse.quote(smiles)
-                url = "%s/%s/neighbor?smiles=%s" %(baseurl, data['databases'][0], safe_smiles)
-                response = requests.get( url )
-                print(response.content)
-                neighbor = response.json()
-                known_act = list()
-                known_act.append((OEMolToSmiles(act_list[c]), act_list[c].GetTitle(), float(neighbor["score"]), True ))
-                ranking_list[i] = MergeRankings(ranking_list[i], known_act, topn)
+                dbfp = fp_list[c]
+                simval = GetSimValAgainstAC(dbfp, fp_list, baitset)
+                ranking_list[i] = UpdateRanking(act_list[c], simval, True, ranking_list[i], topn)
+
+                #known_act = list()
+                #known_act.append((OEMolToSmiles(act_list[c]), act_list[c].GetTitle(), simval, True ))
+                #ranking_list[i] = MergeRankings(ranking_list[i], known_act, topn)
                 c += 1
             c += 1
         while c < len(act_list):
-            smiles = OEMolToSmiles(act_list[c])
-            safe_smiles = parse.quote(smiles)
-            url = "%s/%s/neighbor?smiles=%s" %(baseurl, data['databases'][0], safe_smiles)
-            response = requests.get( url )
-            neighbor = response.json()
-            known_act = list()
-            known_act.append((OEMolToSmiles(act_list[c]), act_list[c].GetTitle(), float(neighbor["score"]), True ))
-            ranking_list[i] = MergeRankings(ranking_list[i], known_act, topn)
+            dbfp = fp_list[c]
+            simval = GetSimValAgainstAC(dbfp, fp_list, baitset)
+            ranking_list[i] = UpdateRanking(act_list[c], simval, True, ranking_list[i], topn)
             c += 1
 
     return ranking_list
+
+def GetSimValAgainstAC(dbfp, fp_list, baitset):
+    maxval = 0
+    for idx in baitset:
+        tanimoto = OETanimoto(dbfp, fp_list[idx])
+        if tanimoto > maxval:
+            maxval = tanimoto
+    return maxval
+
+def UpdateRanking(mol, tanimoto, KA, ranking, topn):
+    index = len(ranking)
+    if (index >= topn and tanimoto < ranking[index-1][2]):
+        return ranking
+    else:    
+        for top_mol in reversed(ranking):
+            if tanimoto > top_mol[2]:
+                index = ranking.index(top_mol) 
+            else:
+                break
+
+        upper = ranking[:index]
+        lower = ranking[index:]
+        ranking = upper + [(OEMolToSmiles(mol), mol.GetTitle(), tanimoto, KA)] + lower
+
+        i = topn - 1
+        while i < len(ranking) - 1:
+            if ranking[i][2] != ranking[i + 1][2]:
+                ranking = ranking[:i + 1]
+
+                break
+            else:
+                i += 1
+
+        return ranking
 
 def RankingAnalysis(ranking_list, nb_ka):
     results = pd.DataFrame()
@@ -224,14 +255,14 @@ def main(argv=[__name__]):
 
     print("Reading inputs")
     index_list = ReadIndex(ini)
-    act_list = read_database(ina)
+    (act_list, fp_list) = read_database(ina, fptype)
     
     nb_ka = len(act_list) - len(index_list[0])
     
     print("Create Rankings")
     ranking_list = CreateRankings(act_list, index_list, baseurl, data, topn)
     print("Insert Known Actives")
-    ranking_list = InsertKnownActives(ranking_list, act_list, index_list, baseurl, data, topn)
+    ranking_list = InsertKnownActives(ranking_list, act_list, fp_list, index_list, baseurl, data, topn, fptype)
 
     print("Analysing")
     results_avg = RankingAnalysis(ranking_list, nb_ka)
