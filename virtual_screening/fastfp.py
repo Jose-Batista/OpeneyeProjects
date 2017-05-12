@@ -5,8 +5,6 @@ from openeye.oegraphsim import *
 
 import sys
 import os
-import random
-import time
 
 import pandas as pd
 import numpy as np
@@ -47,8 +45,10 @@ def ReadIndex(index_input):
     index_log.close()
     return index_list
 
+def CreateRankings(act_list, index_list, baseurl, topn):
+    response = requests.get( baseurl )
+    data = response.json()
 
-def CreateRankings(act_list, index_list, baseurl, data, topn):
     ranking_list = list()
     for baitset in index_list:
         print("New Set")
@@ -116,7 +116,10 @@ def MergeRankings(ranking_1, ranking_2, topn):
 
     return merged_list
 
-def InsertKnownActives(ranking_list, act_list, fp_list, index_list, baseurl, data, topn, fptype):
+def InsertKnownActives(ranking_list, act_list, fp_list, index_list, baseurl, topn, fptype):
+    response = requests.get( baseurl )
+    data = response.json()
+
     for i, baitset in enumerate(index_list):
         print("Set ", i)
         c = 0
@@ -173,7 +176,7 @@ def UpdateRanking(mol, tanimoto, KA, ranking, topn):
 
         return ranking
 
-def RankingAnalysis(ranking_list, nb_ka):
+def RankingAnalysis(ranking_list, nb_ka, topn):
     results = pd.DataFrame()
     for i, ranking in enumerate(ranking_list):
         set_results = pd.DataFrame(columns = ['RR', 'HR', 'Set'])
@@ -191,6 +194,7 @@ def RankingAnalysis(ranking_list, nb_ka):
     results_avg = pd.DataFrame()
     results_avg['Average RR'] = results.groupby(results.index)['RR'].mean()
     results_avg['Average HR'] = results.groupby(results.index)['HR'].mean()
+    results_avg = results_avg.head(topn)
 
     return results_avg
 
@@ -260,12 +264,12 @@ def main(argv=[__name__]):
     nb_ka = len(act_list) - len(index_list[0])
     
     print("Create Rankings")
-    ranking_list = CreateRankings(act_list, index_list, baseurl, data, topn)
+    ranking_list = CreateRankings(act_list, index_list, baseurl, topn)
     print("Insert Known Actives")
-    ranking_list = InsertKnownActives(ranking_list, act_list, fp_list, index_list, baseurl, data, topn, fptype)
+    ranking_list = InsertKnownActives(ranking_list, act_list, fp_list, index_list, baseurl, topn, fptype)
 
     print("Analysing")
-    results_avg = RankingAnalysis(ranking_list, nb_ka)
+    results_avg = RankingAnalysis(ranking_list, nb_ka, topn)
     print("Printing output")
     write_output(ranking_list, results_avg, fptype, od)
 
