@@ -12,20 +12,21 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 def PlotResults(results, plot_output):
+    fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(9,8))
+    plt.subplots_adjust(hspace=0.4)
 
-    results.plot(y = [col for col in results.columns if 'RR' in col], label = "Average RR")
-    plt.xlabel('Top Rank Molecules')
-    plt.ylabel('Rate (%)')
-    plt.legend( loc='best')
-    plt.title("Average RR Rates FP") 
-    path = plot_output + "Average_RR_plot.svg"
-    plt.savefig(path)
+    results.plot(ax=axes[0], y = [col for col in results.columns if 'RR' in col])
+    axes[0].set_xlabel('Top Rank Molecules')
+    axes[0].set_ylabel('Rate (%)')
+    axes[0].set_title("Average RR Rates") 
+    #path = plot_output + "Average_RR_plot.svg"
+    #plt.savefig(path)
     
-    results.plot(y =  [col for col in results.columns if 'HR' in col], label = "Average HR")
-    plt.xlabel('Top Rank Molecules')
-    plt.ylabel('Rate (%)')
-    plt.legend( loc='best')
-    plt.title("Average HR Rates FP")
+    results.plot(ax=axes[1], y = [col for col in results.columns if 'HR' in col])
+    axes[1].set_xlabel('Top Rank Molecules')
+    axes[1].set_ylabel('Rate (%)')
+    axes[1].set_title("Average HR Rates") 
+    
     path = plot_output + "Average_HR_plot.svg"
     plt.savefig(path)
         
