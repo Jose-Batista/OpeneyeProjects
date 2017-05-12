@@ -45,10 +45,11 @@ def ReadIndex(index_input):
     index_log.close()
     return index_list
 
-def CreateRankings(act_list, index_list, baseurl, topn):
-    response = requests.get( baseurl )
-    data = response.json()
-
+def CreateRankings(act_list, index_list, baseurl, topn, fptype):
+    #response = requests.get( baseurl )
+    #data = response.json()
+    fptypes = {102 : 'path', 104 : 'circular', 105 : 'tree'}
+    database = fptypes[fptype] + "_db"
     ranking_list = list()
     for baitset in index_list:
         print("New Set")
@@ -56,7 +57,7 @@ def CreateRankings(act_list, index_list, baseurl, topn):
         for idx in baitset:
             smiles = OEMolToSmiles(act_list[idx])
             safe_smiles = parse.quote(smiles)
-            url = "%s/%s/hitlist?smiles=%s&oformat=csv&maxhits=%d" %(baseurl, data['databases'][0], safe_smiles, topn) 
+            url = "%s/%s/hitlist?smiles=%s&oformat=csv&maxhits=%d" %(baseurl, database, safe_smiles, topn) 
             response = requests.get( url )
             hitlist = response.content.decode().split('\n')
             hitlist.pop(0)
@@ -116,9 +117,7 @@ def MergeRankings(ranking_1, ranking_2, topn):
 
     return merged_list
 
-def InsertKnownActives(ranking_list, act_list, fp_list, index_list, baseurl, topn, fptype):
-    response = requests.get( baseurl )
-    data = response.json()
+def InsertKnownActives(ranking_list, act_list, fp_list, index_list, topn):
 
     for i, baitset in enumerate(index_list):
         print("Set ", i)
@@ -269,9 +268,9 @@ def main(argv=[__name__]):
     nb_ka = len(act_list) - len(index_list[0])
     
     print("Create Rankings")
-    ranking_list = CreateRankings(act_list, index_list, baseurl, topn)
+    ranking_list = CreateRankings(act_list, index_list, baseurl, topn, fptype)
     print("Insert Known Actives")
-    ranking_list = InsertKnownActives(ranking_list, act_list, fp_list, index_list, baseurl, topn, fptype)
+    ranking_list = InsertKnownActives(ranking_list, act_list, fp_list, index_list, topn)
 
     print("Analysing")
     results_avg = RankingAnalysis(ranking_list, nb_ka, topn)

@@ -27,7 +27,7 @@ def PlotResults(results, plot_output):
     axes[1].set_ylabel('Rate (%)')
     axes[1].set_title("Average HR Rates") 
     
-    path = plot_output + "Average_HR_plot.svg"
+    path = plot_output + "Average_plots.svg"
     plt.savefig(path)
         
         #plt.show()
