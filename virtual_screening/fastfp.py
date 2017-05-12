@@ -176,7 +176,7 @@ def UpdateRanking(mol, tanimoto, KA, ranking, topn):
 
         return ranking
 
-def RankingAnalysis(ranking_list, nb_ka, topn):
+def RankingAnalysis(ranking_list, nb_ka, topn, fptype):
     results = pd.DataFrame()
     for i, ranking in enumerate(ranking_list):
         set_results = pd.DataFrame(columns = ['RR', 'HR', 'Set'])
@@ -191,29 +191,34 @@ def RankingAnalysis(ranking_list, nb_ka, topn):
             set_results.loc[row] = [rr, hr, i]
         results = pd.concat([results, set_results])
     
+    fptypes = {102 : 'path', 104 : 'circular', 105 : 'tree'}
+    FPType = fptypes[fptype]
     results_avg = pd.DataFrame()
-    results_avg['Average RR'] = results.groupby(results.index)['RR'].mean()
-    results_avg['Average HR'] = results.groupby(results.index)['HR'].mean()
+    results_avg['Average RR' + FPType] = results.groupby(results.index)['RR'].mean()
+    results_avg['Average HR' + FPType] = results.groupby(results.index)['HR'].mean()
     results_avg = results_avg.head(topn)
 
     return results_avg
 
 def PlotResults(results_avg, plot_output, fptype):
 
-    results_avg.plot(y = 'Average RR', label = "Average RR")
+    fptypes = {102 : 'path', 104 : 'circular', 105 : 'tree'}
+    FPType = fptypes[fptype]
+
+    results_avg.plot(y = 'Average RR' + FPType, label = "Average RR" + FPType)
     plt.xlabel('Top Rank Molecules')
     plt.ylabel('Rate (%)')
     plt.legend( loc='best')
-    plt.title("Average RR Rates FP" + str(fptype))
-    path = plot_output + "Average_RR_plot_FP" + str(fptype) + ".svg"
+    plt.title("Average RR Rates " + FPType
+    path = plot_output + "Average_RR_plot_" + FPType + ".svg"
     plt.savefig(path)
 
-    results_avg.plot(y = 'Average HR', label = "Average HR")
+    results_avg.plot(y = 'Average HR' + FPType, label = "Average HR" + FPType)
     plt.xlabel('Top Rank Molecules')
     plt.ylabel('Rate (%)')
     plt.legend( loc='best')
-    plt.title("Average HR Rates FP" + str(fptype))
-    path = plot_output + "Average_HR_plot_FP" + str(fptype) + ".svg"
+    plt.title("Average HR Rates FP" + FPType
+    path = plot_output + "Average_HR_plot_FP" + FPType + ".svg"
     plt.savefig(path)
     
     #plt.show()
