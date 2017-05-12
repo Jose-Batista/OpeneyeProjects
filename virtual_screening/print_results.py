@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 
 def PlotResults(results, plot_output):
 
-    results.plot(y = 'Average RR', label = "Average RR")
+    results.plot(y = [col for col in results.columns if 'RR' in col], label = "Average RR")
     plt.xlabel('Top Rank Molecules')
     plt.ylabel('Rate (%)')
     plt.legend( loc='best')
@@ -21,7 +21,7 @@ def PlotResults(results, plot_output):
     path = plot_output + "Average_RR_plot.svg"
     plt.savefig(path)
     
-    results.plot(y = 'Average HR', label = "Average HR")
+    results.plot(y =  [col for col in results.columns if 'HR' in col], label = "Average HR")
     plt.xlabel('Top Rank Molecules')
     plt.ylabel('Rate (%)')
     plt.legend( loc='best')
