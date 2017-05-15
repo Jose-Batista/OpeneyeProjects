@@ -175,7 +175,7 @@ def UpdateRanking(mol, tanimoto, KA, ranking, topn):
 
         return ranking
 
-def RankingAnalysis(ranking_list, nb_ka, topn, fptype):
+def RankingAnalysis(ranking_list, nb_ka, topn, FPType):
     results = pd.DataFrame()
     for i, ranking in enumerate(ranking_list):
         set_results = pd.DataFrame(columns = ['RR', 'HR', 'Set'])
@@ -190,8 +190,6 @@ def RankingAnalysis(ranking_list, nb_ka, topn, fptype):
             set_results.loc[row] = [rr, hr, i]
         results = pd.concat([results, set_results])
     
-    fptypes = {102 : 'path', 104 : 'circular', 105 : 'tree'}
-    FPType = fptypes[fptype]
     results_avg = pd.DataFrame()
     results_avg['Average RR ' + FPType] = results.groupby(results.index)['RR'].mean()
     results_avg['Average HR ' + FPType] = results.groupby(results.index)['HR'].mean()
@@ -199,17 +197,14 @@ def RankingAnalysis(ranking_list, nb_ka, topn, fptype):
 
     return results_avg
 
-def PlotResults(results_avg, plot_output, fptype):
-
-    fptypes = {102 : 'path', 104 : 'circular', 105 : 'tree'}
-    FPType = fptypes[fptype]
+def PlotResults(results_avg, plot_output, FPType):
 
     results_avg.plot(y = 'Average RR' + FPType, label = "Average RR" + FPType)
     plt.xlabel('Top Rank Molecules')
     plt.ylabel('Rate (%)')
     plt.legend( loc='best')
     plt.title("Average RR Rates " + FPType)
-    path = plot_output + "Average_RR_plot_" + FPType + ".svg"
+    path = plot_output + "Average_ffp_RR_plot_" + FPType + ".svg"
     plt.savefig(path)
 
     results_avg.plot(y = 'Average HR' + FPType, label = "Average HR" + FPType)
@@ -217,13 +212,13 @@ def PlotResults(results_avg, plot_output, fptype):
     plt.ylabel('Rate (%)')
     plt.legend( loc='best')
     plt.title("Average HR Rates FP" + FPType)
-    path = plot_output + "Average_HR_plot_" + FPType + ".svg"
+    path = plot_output + "Average_ffp_HR_plot_" + FPType + ".svg"
     plt.savefig(path)
     
     #plt.show()
 
 
-def write_output(ranking_list, results_avg, fptype, output_dir):
+def write_output(ranking_list, results_avg, FPType, output_dir):
     #ofs = oemolostream()
     #path = output_dir + "ranking_FP" + str(fptype) + ".oeb"
 
@@ -234,7 +229,7 @@ def write_output(ranking_list, results_avg, fptype, output_dir):
     #    for mol in ranking:
     #        OEWriteMolecule(ofs, mol[0])
 
-    path = output_dir + "ranking_FP" + str(fptype) + ".txt"
+    path = output_dir + "ranking_ffp_" + FPType + ".txt"
     ranking_save = open(path, "w")
     for i, ranking in enumerate(ranking_list):
         ranking_save.write("\n" + "Set n°" + str(i) + "\n")
@@ -243,10 +238,10 @@ def write_output(ranking_list, results_avg, fptype, output_dir):
             ranking_save.write(mol_data)
     ranking_save.close()
 
-    path = output_dir + "results_FP" + str(fptype) + ".csv"
+    path = output_dir + "results_ffp_" + FPType + ".csv"
     results_avg.to_csv(path)
     
-    PlotResults(results_avg, output_dir, fptype)
+    PlotResults(results_avg, output_dir, FPType)
     
 def main(argv=[__name__]):
     itf = OEInterface(InterfaceData, argv)
@@ -273,9 +268,11 @@ def main(argv=[__name__]):
     ranking_list = InsertKnownActives(ranking_list, act_list, fp_list, index_list, topn)
 
     print("Analysing")
-    results_avg = RankingAnalysis(ranking_list, nb_ka, topn, fptype)
+    fptypes = {102 : 'path', 104 : 'circular', 105 : 'tree'}
+    FPType = fptypes[fptype]
+    results_avg = RankingAnalysis(ranking_list, nb_ka, topn, FPType)
     print("Printing output")
-    write_output(ranking_list, results_avg, fptype, od)
+    write_output(ranking_list, results_avg, FPType, od)
 
 
 InterfaceData = """
