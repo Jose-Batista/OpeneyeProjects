@@ -193,8 +193,8 @@ def RankingAnalysis(ranking_list, nb_ka, topn, fptype):
     fptypes = {102 : 'path', 104 : 'circular', 105 : 'tree'}
     FPType = fptypes[fptype]
     results_avg = pd.DataFrame()
-    results_avg['Average RR' + FPType] = results.groupby(results.index)['RR'].mean()
-    results_avg['Average HR' + FPType] = results.groupby(results.index)['HR'].mean()
+    results_avg['Average RR ' + FPType] = results.groupby(results.index)['RR'].mean()
+    results_avg['Average HR ' + FPType] = results.groupby(results.index)['HR'].mean()
     results_avg = results_avg.head(topn)
 
     return results_avg
@@ -217,7 +217,7 @@ def PlotResults(results_avg, plot_output, fptype):
     plt.ylabel('Rate (%)')
     plt.legend( loc='best')
     plt.title("Average HR Rates FP" + FPType)
-    path = plot_output + "Average_HR_plot_FP" + FPType + ".svg"
+    path = plot_output + "Average_HR_plot_" + FPType + ".svg"
     plt.savefig(path)
     
     #plt.show()
