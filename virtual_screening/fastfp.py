@@ -208,7 +208,7 @@ def PlotResults(results_avg, plot_output, fptype):
     plt.xlabel('Top Rank Molecules')
     plt.ylabel('Rate (%)')
     plt.legend( loc='best')
-    plt.title("Average RR Rates " + FPType
+    plt.title("Average RR Rates " + FPType)
     path = plot_output + "Average_RR_plot_" + FPType + ".svg"
     plt.savefig(path)
 
@@ -216,7 +216,7 @@ def PlotResults(results_avg, plot_output, fptype):
     plt.xlabel('Top Rank Molecules')
     plt.ylabel('Rate (%)')
     plt.legend( loc='best')
-    plt.title("Average HR Rates FP" + FPType
+    plt.title("Average HR Rates FP" + FPType)
     path = plot_output + "Average_HR_plot_FP" + FPType + ".svg"
     plt.savefig(path)
     
@@ -273,7 +273,7 @@ def main(argv=[__name__]):
     ranking_list = InsertKnownActives(ranking_list, act_list, fp_list, index_list, topn)
 
     print("Analysing")
-    results_avg = RankingAnalysis(ranking_list, nb_ka, topn)
+    results_avg = RankingAnalysis(ranking_list, nb_ka, topn, fptype)
     print("Printing output")
     write_output(ranking_list, results_avg, fptype, od)
 
