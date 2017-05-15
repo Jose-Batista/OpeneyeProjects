@@ -199,7 +199,7 @@ def RankingAnalysis(ranking_list, nb_ka, topn, FPType):
 
 def PlotResults(results_avg, plot_output, FPType):
 
-    results_avg.plot(y = 'Average RR' + FPType, label = "Average RR" + FPType)
+    results_avg.plot(y = 'Average RR ' + FPType, label = "Average RR" + FPType)
     plt.xlabel('Top Rank Molecules')
     plt.ylabel('Rate (%)')
     plt.legend( loc='best')
@@ -207,7 +207,7 @@ def PlotResults(results_avg, plot_output, FPType):
     path = plot_output + "Average_ffp_RR_plot_" + FPType + ".svg"
     plt.savefig(path)
 
-    results_avg.plot(y = 'Average HR' + FPType, label = "Average HR" + FPType)
+    results_avg.plot(y = 'Average HR ' + FPType, label = "Average HR" + FPType)
     plt.xlabel('Top Rank Molecules')
     plt.ylabel('Rate (%)')
     plt.legend( loc='best')
