@@ -28,12 +28,30 @@ def PlotResults(results, subdirs, folder, plot_output):
         axes[AC_count, 0].set_ylabel('Rate (%)')
         axes[AC_count, 0].set_title("Avg Recovery Rates " + AC) 
         axes[AC_count, 0].legend([col.split(" ")[2] for col in results.columns if ('RR' in col and AC in col)])
-        
+        for line in axes[AC_count, 0].get_lines():
+            if 'tree' in line.get_label():
+                line.set_color("C0")
+            if 'path' in line.get_label():
+                line.set_color("C1")
+            if 'circular' in line.get_label():
+                line.set_color("C2")
+            if 'FR' in line.get_label():
+                line.set_color("red")
+
         results.plot(ax=axes[AC_count, 1], y = [col for col in results.columns if ('HR' in col and AC in col)], sharex = True, sharey = True)
         axes[AC_count, 1].set_xlabel('Top Rank Molecules')
         axes[AC_count, 1].set_title("Avg Hit Rates " + AC) 
         axes[AC_count, 1].legend([col.split(" ")[2] for col in results.columns if ('HR' in col and AC in col)])
-        
+        for line in axes[AC_count, 1].get_lines():
+            if 'tree' in line.get_label():
+                line.set_color("C0")
+            if 'path' in line.get_label():
+                line.set_color("C1")
+            if 'circular' in line.get_label():
+                line.set_color("C2")
+            if 'FR' in line.get_label():
+                line.set_color("red")
+
         AC_count += 1
         if AC_count == 3 and AC_left !=3: 
             pdf_file.savefig(fig)
