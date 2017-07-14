@@ -90,7 +90,7 @@ def TTest(results, subdirs, folders, output):
 
     print("\nRecovery Rate at TOP500")
     tree_1024_tree_2048_500 = ttest_rel(sample_500['1024'], sample_500['2048'])
-    print(' T-Test results on RR for tree_1024 against tree_2048 for top500 : ', tree_1024_tree_2048_500)
+    print(' \n T-Test results on RR for tree_1024 against tree_2048 for top500 : ', tree_1024_tree_2048_500)
     stream.write(' T-Test results on RR for tree_1024 against tree_2048 for top500 : ' + str(tree_1024_tree_2048_500) + '\n')
     mean, var, std = bayes_mvs(sample_500['1024_2048'])
     print(mean)
@@ -112,7 +112,7 @@ def TTest(results, subdirs, folders, output):
 
     tree_2048_tree_4096_500 = ttest_rel(sample_500['2048'], sample_500['4096'])
     print(' T-Test results on RR for tree_2048 against tree_4096 for top500 : ', tree_2048_tree_4096_500)
-    stream.write(' \n T-Test results on RR for tree_2048 against tree_4096 for top500 : ' + str(tree_2048_tree_4096_500) + '\n')
+    stream.write(' T-Test results on RR for tree_2048 against tree_4096 for top500 : ' + str(tree_2048_tree_4096_500) + '\n')
     mean, var, std = bayes_mvs(sample_500['2048_4096'])
     print(mean)
     stream.write(str(mean) + '\n')
